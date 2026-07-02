@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: 'https://ecommerce-fullstack-design-znwg.onrender.com',
+  baseURL: 'https://ecommerce-fullstack-design-znwg.onrender.com/api',
 });
 
 export const setAuthToken = (token) => {
