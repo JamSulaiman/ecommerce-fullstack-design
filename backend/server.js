@@ -12,6 +12,7 @@ connectDB();
 const app = express();
 app.use(cors({
     origin: [
+        'https://ecommerce-fullstack-design-ayxy.vercel.app',
         'https://ecommerce-fullstack-design-olive-one.vercel.app',
         'http://localhost:5173',
         'http://localhost:3000'
