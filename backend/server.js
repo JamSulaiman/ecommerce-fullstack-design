@@ -27,14 +27,14 @@ app.use('/api/products', productRoutes);
 app.use('/api/users', userRoutes);
 
 // Seed endpoint - products ko database mein add karne ke liye (27 products ka complete catalog)
+// Pehle se jo products hain woh delete kar deta hai
 app.get('/api/seed', async (req, res) => {
   try {
     const Product = (await import('./models/product.js')).default;
     
-    const existingCount = await Product.countDocuments();
-    if (existingCount > 0) {
-      return res.json({ message: 'Products already exist', count: existingCount });
-    }
+    // Delete existing products
+    await Product.deleteMany();
+    console.log('Deleted old products');
 
     const products = [
       { name: 'Canon Camera EOS 2000, Black 10x zoom', price: 998.0, oldPrice: 1128.0, image: '/products/cloth/1.jpg', description: 'Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.', category: 'Electronics', stock: 25, rating: 4, ratingNum: 7.5, orders: 154 },
