@@ -101,55 +101,63 @@ function Navbar() {
         {/* Right Menu Icons */}
         <div className="flex items-center gap-4 md:gap-6 flex-shrink-0">
           {user ? (
-            user.isAdmin ? (
-              <div className="relative hidden md:flex flex-col items-center">
-                <button
-                  onClick={() => setProfileOpen((prev) => !prev)}
-                  className="flex flex-col items-center text-gray-500 hover:text-blue-600 transition group"
-                  type="button"
-                >
-                  <span className="text-lg mb-1 text-gray-400 group-hover:text-blue-600">🛠️</span>
-                  <span className="text-xs font-normal">Admin</span>
-                </button>
+            <>
+              {user.isAdmin ? (
+                <div className="relative hidden md:flex flex-col items-center">
+                  <button
+                    onClick={() => setProfileOpen((prev) => !prev)}
+                    className="flex flex-col items-center text-gray-500 hover:text-blue-600 transition group"
+                    type="button"
+                  >
+                    <span className="text-lg mb-1 text-gray-400 group-hover:text-blue-600">👤</span>
+                    <span className="text-xs font-normal">{user.name || 'Admin'}</span>
+                  </button>
 
-                {profileOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-gray-200 bg-white shadow-xl py-2">
-                    <Link
-                      to="/profile"
-                      onClick={() => setProfileOpen(false)}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      My account
-                    </Link>
-                    <Link
-                      to="/admin?tab=customers"
-                      onClick={() => setProfileOpen(false)}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Customer dashboard
-                    </Link>
-                    <Link
-                      to="/admin?tab=products"
-                      onClick={() => setProfileOpen(false)}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Product manager
-                    </Link>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-4">
-                <Link to="/profile#orders" className="hidden md:flex flex-col items-center text-gray-500 hover:text-blue-600 transition group">
-                  <span className="text-lg mb-1 text-gray-400 group-hover:text-blue-600">🧾</span>
-                  <span className="text-xs font-normal">Orders</span>
-                </Link>
-                <Link to="/profile" className="hidden md:flex flex-col items-center text-gray-500 hover:text-blue-600 transition group">
-                  <span className="text-lg mb-1 text-gray-400 group-hover:text-blue-600">👤</span>
-                  <span className="text-xs font-normal">{user.name || 'Admin'}</span>
-                </Link>
-
-                
+                  {profileOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-gray-200 bg-white shadow-xl py-2">
+                      <Link
+                        to="/profile"
+                        onClick={() => setProfileOpen(false)}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        My account
+                      </Link>
+                      <Link
+                        to="/admin?tab=customers"
+                        onClick={() => setProfileOpen(false)}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Customer dashboard
+                      </Link>
+                      <Link
+                        to="/admin?tab=products"
+                        onClick={() => setProfileOpen(false)}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Product manager
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-4">
+                  <Link to="/profile#orders" className="hidden md:flex flex-col items-center text-gray-500 hover:text-blue-600 transition group">
+                    <span className="text-lg mb-1 text-gray-400 group-hover:text-blue-600">🧾</span>
+                    <span className="text-xs font-normal">Orders</span>
+                  </Link>
+                  <Link to="/profile" className="hidden md:flex flex-col items-center text-gray-500 hover:text-blue-600 transition group">
+                    <span className="text-lg mb-1 text-gray-400 group-hover:text-blue-600">👤</span>
+                    <span className="text-xs font-normal">{user.name || 'Profile'}</span>
+                  </Link>
+                </div>
+              )}
+            </>
+          ) : (
+            <Link to="/login" className="hidden md:flex flex-col items-center text-gray-500 hover:text-blue-600 transition group">
+              <span className="text-lg mb-1 text-gray-400 group-hover:text-blue-600">👤</span>
+              <span className="text-xs font-normal">Profile</span>
+            </Link>
+          )}
 
           <Link to="/contact" className="hidden md:flex flex-col items-center text-gray-500 hover:text-blue-600 transition group">
             <span className="text-lg mb-1 text-gray-400 group-hover:text-blue-600">💬</span>
