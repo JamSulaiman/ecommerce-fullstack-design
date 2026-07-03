@@ -10,12 +10,18 @@ const MobileSidebar = ({ isOpen, onClose }) => {
       {/* Sidebar Content */}
       <div className={`absolute left-0 top-0 bottom-0 w-72 bg-white flex flex-col transition-transform duration-300 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* User Header */}
-        <div className="bg-gray-100 p-4 border-b flex flex-col gap-2 relative">
+        <div className="bg-gray-100 p-4 border-b flex flex-col gap-3 relative">
           <button onClick={onClose} className="absolute right-4 top-4 text-gray-500 text-lg">✕</button>
           <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl text-white">👤</div>
-          <Link to="/profile" onClick={onClose} className="text-gray-800 font-semibold text-sm">
-            Sign in | Register
-          </Link>
+          <div className="flex flex-wrap gap-2 text-sm font-semibold text-gray-800">
+            <Link to="/login" onClick={onClose} className="hover:text-blue-600">
+              Sign in
+            </Link>
+            <span className="text-gray-500">|</span>
+            <Link to="/register" onClick={onClose} className="hover:text-blue-600">
+              Register
+            </Link>
+          </div>
         </div>
 
         {/* Nav Links */}
@@ -35,14 +41,20 @@ const MobileSidebar = ({ isOpen, onClose }) => {
             </Link>
           </div>
           <div className="flex flex-col gap-4 border-b pb-4 text-gray-600">
-            <div className="flex items-center gap-3 cursor-pointer"><span>🌐</span> English | USD</div>
-            <div className="flex items-center gap-3 cursor-pointer"><span>🎧</span> Contact us</div>
-            <div className="flex items-center gap-3 cursor-pointer"><span>🏢</span> About</div>
+            <Link to="/contact" onClick={onClose} className="flex items-center gap-3 hover:text-blue-600">
+              <span>💬</span> Message
+            </Link>
+            <Link to="/contact" onClick={onClose} className="flex items-center gap-3 hover:text-blue-600">
+              <span>🎧</span> Contact us
+            </Link>
+            <Link to="/contact" onClick={onClose} className="flex items-center gap-3 hover:text-blue-600">
+              <span>🏢</span> About
+            </Link>
           </div>
           <div className="flex flex-col gap-3 text-xs text-gray-400">
-            <span className="cursor-pointer">User agreement</span>
-            <span className="cursor-pointer">Partnership</span>
-            <span className="cursor-pointer">Privacy policy</span>
+            <Link to="/contact" onClick={onClose} className="cursor-pointer hover:text-blue-600">User agreement</Link>
+            <Link to="/contact" onClick={onClose} className="cursor-pointer hover:text-blue-600">Partnership</Link>
+            <Link to="/contact" onClick={onClose} className="cursor-pointer hover:text-blue-600">Privacy policy</Link>
           </div>
         </div>
       </div>

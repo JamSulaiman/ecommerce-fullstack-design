@@ -32,6 +32,30 @@ router.get('/orders', protect, async (req, res) => {
   }
 });
 
+// @desc    Get all customer orders (admin only)
+// @route   GET /api/users/admin/orders
+// @access  Private/Admin
+router.get('/admin/orders', protect, admin, async (req, res) => {
+  try {
+    const orders = await Order.find().populate('user', 'name email isAdmin').populate('orderItems.product', 'name image price');
+    res.status(200).json(orders);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// @desc    Get all customers (admin only)
+// @route   GET /api/users/admin/customers
+// @access  Private/Admin
+router.get('/admin/customers', protect, admin, async (req, res) => {
+  try {
+    const users = await User.find().select('-password');
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // @desc    Create a new order
 // @route   POST /api/users/orders
 // @access  Private
