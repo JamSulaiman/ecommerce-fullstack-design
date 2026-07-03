@@ -1,7 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const MobileSidebar = ({ isOpen, onClose }) => {
+  const { user } = useAuth();
   return (
     <div className={`fixed inset-0 z-50 transition-all duration-300 ${isOpen ? 'visible' : 'invisible'}`}>
       {/* Backdrop */}
@@ -13,15 +15,24 @@ const MobileSidebar = ({ isOpen, onClose }) => {
         <div className="bg-gray-100 p-4 border-b flex flex-col gap-3 relative">
           <button onClick={onClose} className="absolute right-4 top-4 text-gray-500 text-lg">✕</button>
           <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl text-white">👤</div>
-          <div className="flex flex-wrap gap-2 text-sm font-semibold text-gray-800">
-            <Link to="/login" onClick={onClose} className="hover:text-blue-600">
-              Sign in
-            </Link>
-            <span className="text-gray-500">|</span>
-            <Link to="/register" onClick={onClose} className="hover:text-blue-600">
-              Register
-            </Link>
-          </div>
+          {user ? (
+            <>
+              <p className="text-sm text-gray-700">Hi, {user.name}</p>
+              <Link to="/profile" onClick={onClose} className="text-blue-600 font-semibold text-sm hover:underline">
+                View profile
+              </Link>
+            </>
+          ) : (
+            <div className="flex flex-wrap gap-2 text-sm font-semibold text-gray-800">
+              <Link to="/login" onClick={onClose} className="hover:text-blue-600">
+                Sign in
+              </Link>
+              <span className="text-gray-500">|</span>
+              <Link to="/register" onClick={onClose} className="hover:text-blue-600">
+                Register
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Nav Links */}
