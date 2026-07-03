@@ -149,17 +149,7 @@ function Navbar() {
                   <span className="text-xs font-normal">{user.name || 'Admin'}</span>
                 </Link>
 
-                {profileOpen && (
-                  <>
-                    <div style={{position: 'absolute', right: 14, top: '100%', transform: 'translateY(-6px)'}}>
-                      <div style={{width:0, height:0, borderLeft: '7px solid transparent', borderRight: '7px solid transparent', borderBottom: '8px solid white'}} />
-                    </div>
-                    <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-gray-200 bg-white shadow-xl py-2">
-            <Link to="/login" className="hidden md:flex flex-col items-center text-gray-500 hover:text-blue-600 transition group">
-              <span className="text-lg mb-1 text-gray-400 group-hover:text-blue-600">👤</span>
-              <span className="text-xs font-normal">Profile</span>
-            </Link>
-          )}
+                
 
           <Link to="/contact" className="hidden md:flex flex-col items-center text-gray-500 hover:text-blue-600 transition group">
             <span className="text-lg mb-1 text-gray-400 group-hover:text-blue-600">💬</span>
