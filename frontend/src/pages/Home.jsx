@@ -299,12 +299,12 @@ const Home = () => {
                   <p className="text-sm font-semibold">let's get started</p>
                 </div>
               </div>
-              <button className="w-full bg-blue-600 text-white text-sm font-medium py-2 rounded-md mb-1.5 hover:bg-blue-700 transition">
+              <Link to="/register" className="w-full bg-blue-600 text-white text-sm font-medium py-2 rounded-md mb-1.5 hover:bg-blue-700 transition inline-flex items-center justify-center">
                 Join now
-              </button>
-              <button className="w-full border border-blue-600 text-blue-600 text-sm font-medium py-1.5 rounded-md hover:bg-blue-600 hover:text-white transition">
+              </Link>
+              <Link to="/login" className="w-full border border-blue-600 text-blue-600 text-sm font-medium py-1.5 rounded-md hover:bg-blue-600 hover:text-white transition inline-flex items-center justify-center">
                 Log in
-              </button>
+              </Link>
             </div>
             <div className="bg-orange-500 text-white rounded-lg p-3.5 text-xs leading-relaxed cursor-pointer hover:bg-orange-600 transition">
               <p className="font-bold text-sm mb-0.5">Get US $10 off</p>
