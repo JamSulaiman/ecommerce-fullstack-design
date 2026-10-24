@@ -3,8 +3,23 @@ import express from 'express';
 import Product from '../models/product.js';
 import Order from '../models/Order.js';
 import { protect, optionalProtect, admin } from '../middleware/authMiddleware.js';
+import { serializeProductPricing } from '../utils/productPricing.js';
 
 const router = express.Router();
+const MAX_SALE_DURATION_HOURS = 24 * 30;
+
+const getSaleSchedule = (oldPrice, price, durationHours) => {
+  if (oldPrice == null) return { saleStartsAt: null, saleEndsAt: null };
+  const hours = Number(durationHours);
+  if (!Number.isInteger(hours) || hours < 1 || hours > MAX_SALE_DURATION_HOURS) {
+    throw Object.assign(new Error(`Sale duration must be between 1 and ${MAX_SALE_DURATION_HOURS} hours.`), { status: 400 });
+  }
+  if (Number(oldPrice) <= Number(price)) {
+    throw Object.assign(new Error('Regular price must be higher than the sale price.'), { status: 400 });
+  }
+  const saleStartsAt = new Date();
+  return { saleStartsAt, saleEndsAt: new Date(saleStartsAt.getTime() + hours * 60 * 60 * 1000) };
+};
 
 // @desc    Get all products (Search bhi isme kaam karega)
 // @route   GET /api/products?q=keyword&cat=category
@@ -36,7 +51,9 @@ router.get('/', async (req, res) => {
     }
 
     const products = await Product.find(filter).select('-reviews.user');
-    res.status(200).json(products);
+    const now = new Date();
+    res.set('X-Server-Time', String(now.getTime()));
+    res.status(200).json(products.map((product) => serializeProductPricing(product, now)));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -48,7 +65,7 @@ router.get('/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).select('-reviews.user');
     if (!product) return res.status(404).json({ message: 'Product not found' });
-    res.status(200).json(product);
+    res.status(200).json(serializeProductPricing(product));
   } catch (error) {
     res.status(error.name === 'CastError' ? 400 : 500).json({ message: error.message });
   }
@@ -124,14 +141,23 @@ router.post('/:id/reviews', protect, async (req, res) => {
 // @route   POST /api/products
 router.post('/', protect, admin, async (req, res) => {
   try {
-    const { name, price, oldPrice = null, image, description, category, brand = '', stock } = req.body;
-    if (oldPrice !== null && (!Number.isFinite(Number(oldPrice)) || Number(oldPrice) <= Number(price))) {
-      return res.status(400).json({ message: 'Regular price must be higher than the sale price.' });
-    }
+    const {
+      name,
+      price,
+      oldPrice = null,
+      saleDurationHours,
+      image,
+      description,
+      category,
+      brand = '',
+      stock,
+    } = req.body;
+    const saleSchedule = getSaleSchedule(oldPrice, price, saleDurationHours);
     const product = new Product({
       name,
       price,
       oldPrice,
+      ...saleSchedule,
       image,
       description,
       category,
@@ -142,9 +168,9 @@ router.post('/', protect, admin, async (req, res) => {
       orders: 0,
     });
     const createdProduct = await product.save();
-    res.status(201).json(createdProduct);
+    res.status(201).json(serializeProductPricing(createdProduct));
   } catch (error) {
-    res.status(error.name === 'CastError' || error.name === 'ValidationError' ? 400 : 500).json({ message: error.message });
+    res.status(error.status || (error.name === 'CastError' || error.name === 'ValidationError' ? 400 : 500)).json({ message: error.message });
   }
 });
 
@@ -158,14 +184,16 @@ router.put('/:id', protect, admin, async (req, res) => {
     for (const field of ['name', 'price', 'oldPrice', 'image', 'description', 'category', 'brand', 'stock']) {
       if (req.body[field] !== undefined) product[field] = req.body[field];
     }
-    if (product.oldPrice != null && product.oldPrice <= product.price) {
-      return res.status(400).json({ message: 'Regular price must be higher than the sale price.' });
+    if (req.body.oldPrice !== undefined) {
+      const saleSchedule = getSaleSchedule(product.oldPrice, product.price, req.body.saleDurationHours);
+      product.saleStartsAt = saleSchedule.saleStartsAt;
+      product.saleEndsAt = saleSchedule.saleEndsAt;
     }
 
     const updatedProduct = await product.save();
-    res.status(200).json(updatedProduct);
+    res.status(200).json(serializeProductPricing(updatedProduct));
   } catch (error) {
-    res.status(error.name === 'CastError' || error.name === 'ValidationError' ? 400 : 500).json({ message: error.message });
+    res.status(error.status || (error.name === 'CastError' || error.name === 'ValidationError' ? 400 : 500)).json({ message: error.message });
   }
 });
 

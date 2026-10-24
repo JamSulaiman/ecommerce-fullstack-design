@@ -9,6 +9,7 @@ import Product from '../models/product.js';
 import { STATUS_TRANSITIONS } from '../models/Order.js';
 import { sendEmailVerificationCode, sendOrderStatusEmail } from '../services/email.js';
 import { protect, optionalProtect, admin } from '../middleware/authMiddleware.js';
+import { getEffectivePrice } from '../utils/productPricing.js';
 
 const router = express.Router();
 const VERIFICATION_WINDOW_MS = 10 * 60 * 1000;
@@ -463,14 +464,15 @@ router.post('/orders', protect, async (req, res) => {
           if (!product) {
             throw Object.assign(new Error('Product not found or insufficient stock.'), { status: 400 });
           }
+          const price = getEffectivePrice(product);
           finalItems.push({
             name: product.name,
             qty: item.qty,
             image: product.image,
-            price: product.price,
+            price,
             product: product._id,
           });
-          totalPrice += product.price * item.qty;
+          totalPrice += price * item.qty;
         }
 
         [order] = await Order.create([{

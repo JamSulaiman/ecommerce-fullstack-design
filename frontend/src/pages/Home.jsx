@@ -27,38 +27,46 @@ const SUPPLIERS = [
   { country: 'Great Britain', url: 'shopname.co.uk', flag: '/flags/uk.svg' },
 ];
 
-function useCountdown(hours = 13, days = 4) {
-  const [time, setTime] = useState(() => {
-    const target = new Date().getTime() + (days * 86400 + hours * 3600 + 34 * 60 + 56) * 1000;
-    return target;
+function useCountdown(offers, serverTimeOffset) {
+  const [countdown, setCountdown] = useState({
+    d: '00',
+    h: '00',
+    m: '00',
+    s: '00',
+    now: Date.now() + serverTimeOffset,
   });
-  const [display, setDisplay] = useState({ d: '04', h: '13', m: '34', s: '56' });
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date().getTime();
-      const diff = Math.max(0, time - now);
+    const update = () => {
+      const now = Date.now() + serverTimeOffset;
+      const nextEnd = offers
+        .map((offer) => new Date(offer.saleEndsAt).getTime())
+        .filter((end) => Number.isFinite(end) && end > now)
+        .sort((first, second) => first - second)[0];
+      const diff = Math.max(0, (nextEnd || now) - now);
       const d = Math.floor(diff / 86400000);
       const h = Math.floor((diff % 86400000) / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
       const s = Math.floor((diff % 60000) / 1000);
-      setDisplay({
+      setCountdown({
         d: String(d).padStart(2, '0'),
         h: String(h).padStart(2, '0'),
         m: String(m).padStart(2, '0'),
         s: String(s).padStart(2, '0'),
+        now,
       });
-    }, 1000);
+    };
+    update();
+    const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [time]);
+  }, [offers, serverTimeOffset]);
 
-  return display;
+  return countdown;
 }
 
 const Home = () => {
   const { addToCart } = useCart();
   const { user } = useAuth();
-  const timer = useCountdown();
   const [homeCategories, setHomeCategories] = useState([]);
   const [quoteForm, setQuoteForm] = useState({
     name: user?.name || '',
@@ -88,6 +96,9 @@ const Home = () => {
 
   const [recommended, setRecommended] = useState([]);
   const [deals, setDeals] = useState([]);
+  const [serverTimeOffset, setServerTimeOffset] = useState(0);
+  const timer = useCountdown(deals, serverTimeOffset);
+  const activeDeals = deals.filter((deal) => new Date(deal.saleEndsAt).getTime() > timer.now);
   const [homeOutdoorProducts, setHomeOutdoorProducts] = useState([]);
   const [consumerProducts, setConsumerProducts] = useState([]);
   const navigate = useNavigate();
@@ -119,8 +130,11 @@ const Home = () => {
   useEffect(() => {
     let isMounted = true;
     API.get('/products')
-      .then(({ data }) => {
+      .then((response) => {
+        const { data } = response;
+        const serverNow = Number(response.headers['x-server-time']);
         if (!isMounted) return;
+        if (Number.isFinite(serverNow)) setServerTimeOffset(serverNow - Date.now());
         const categoryMap = new Map();
         data.forEach((product) => {
           if (!product.category) return;
@@ -142,17 +156,18 @@ const Home = () => {
         setRecommended(mappedRecommended);
 
         const discounted = data
-          .filter((p) => p.oldPrice && p.oldPrice > p.price)
-          .slice(0, 5)
+          .filter((p) => p.saleActive && p.oldPrice && p.oldPrice > p.price && p.saleEndsAt)
+          .sort((first, second) => new Date(first.saleEndsAt) - new Date(second.saleEndsAt))
           .map((p) => ({
             _id: p._id,
             name: p.name,
             img: p.image,
             price: p.price,
             stock: p.stock || 0,
+            saleEndsAt: p.saleEndsAt,
             discount: `-${Math.round(((p.oldPrice - p.price) / p.oldPrice) * 100)}%`,
           }));
-        if (discounted.length) setDeals(discounted);
+        setDeals(discounted);
       })
       .catch((error) => {
         if (isMounted) setCategoriesError(error.response?.data?.message || 'Could not load product categories.');
@@ -307,10 +322,10 @@ const Home = () => {
         </div>
 
         {/* ═══════════ DEALS AND OFFERS ═══════════ */}
-        {deals.length > 0 && <div className="bg-white rounded-lg flex flex-col md:flex-row overflow-hidden mb-3">
+        {activeDeals.length > 0 && <div className="bg-white rounded-lg flex flex-col md:flex-row overflow-hidden mb-3">
           <div className="w-full md:w-[180px] flex-shrink-0 p-4 md:border-r border-b md:border-b-0 border-gray-100">
             <h3 className="text-base font-bold mb-0.5">Deals and offers</h3>
-            <p className="text-xs text-gray-400 mb-3">Hygiene equipments</p>
+            <p className="text-xs text-gray-400 mb-3">Limited-time offers</p>
             <div className="flex gap-1.5">
               <div className="bg-gray-800 text-white rounded-md px-2.5 py-1.5 text-center min-w-[42px]">
                 <span className="block text-base font-bold leading-none">{timer.d}</span>
@@ -331,7 +346,7 @@ const Home = () => {
             </div>
           </div>
           <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
-            {deals.map((deal, idx) => (
+            {activeDeals.slice(0, 5).map((deal, idx) => (
               <Link
                 key={idx}
                 to={deal._id ? `/product/${deal._id}` : `/products?q=${encodeURIComponent(deal.name)}`}

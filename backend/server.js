@@ -8,6 +8,7 @@ import connectDB from './config/db.js';
 import productRoutes from './routes/productRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import Order from './models/Order.js';
+import Product from './models/product.js';
 
 dotenv.config({ path: fileURLToPath(new URL('./.env', import.meta.url)) });
 
@@ -22,6 +23,7 @@ app.use(cors({
     'http://127.0.0.1:3000',
   ],
   credentials: true,
+  exposedHeaders: ['X-Server-Time'],
 }));
 app.use(express.json());
 
@@ -43,6 +45,20 @@ app.get('/health', (req, res) => {
 const PORT = process.env.PORT || 5000;
 await connectDB();
 await Order.createIndexes();
+const saleStartsAt = new Date();
+await Product.updateMany(
+  {
+    oldPrice: { $ne: null },
+    saleEndsAt: null,
+    $expr: { $gt: ['$oldPrice', '$price'] },
+  },
+  {
+    $set: {
+      saleStartsAt,
+      saleEndsAt: new Date(saleStartsAt.getTime() + 48 * 60 * 60 * 1000),
+    },
+  }
+);
 const legacyTerminalOrders = await Order.find({
   status: { $in: ['delivered', 'cancelled'] },
   terminalAt: null,

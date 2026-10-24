@@ -42,6 +42,7 @@ function AdminPanel() {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [salePrice, setSalePrice] = useState('');
+  const [saleDurationHours, setSaleDurationHours] = useState('48');
   const [image, setImage] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
@@ -163,6 +164,7 @@ function AdminPanel() {
     setName('');
     setPrice('');
     setSalePrice('');
+    setSaleDurationHours('48');
     setImage('');
     setDescription('');
     setCategory('');
@@ -178,10 +180,18 @@ function AdminPanel() {
       alert('Sale price must be lower than the regular price.');
       return;
     }
+    if (
+      discountedPrice !== null
+      && (!Number.isInteger(Number(saleDurationHours)) || Number(saleDurationHours) < 1 || Number(saleDurationHours) > 720)
+    ) {
+      alert('Sale duration must be between 1 and 720 hours.');
+      return;
+    }
     const productData = {
       name,
       price: discountedPrice ?? regularPrice,
       oldPrice: discountedPrice === null ? null : regularPrice,
+      saleDurationHours: discountedPrice === null ? null : Number(saleDurationHours),
       image,
       description,
       category,
@@ -251,6 +261,23 @@ function AdminPanel() {
               <input placeholder="Name" className="p-2 border rounded" value={name} onChange={(event) => setName(event.target.value)} required />
               <input placeholder="Regular price" type="number" min="0.01" step="0.01" className="p-2 border rounded" value={price} onChange={(event) => setPrice(event.target.value)} required />
               <input placeholder="Sale price (optional)" type="number" min="0.01" step="0.01" className="p-2 border rounded" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} />
+              <label className="flex flex-col gap-1 text-sm text-gray-600">
+                Sale duration (hours)
+                <input
+                  type="number"
+                  min="1"
+                  max="720"
+                  step="1"
+                  className="p-2 border rounded text-gray-900"
+                  value={saleDurationHours}
+                  onChange={(event) => setSaleDurationHours(event.target.value)}
+                  disabled={!salePrice}
+                  required={Boolean(salePrice)}
+                />
+              </label>
+              <p className="self-center text-xs text-gray-500">
+                Starts when you save. Default is 48 hours (2 days); maximum is 30 days.
+              </p>
               <input placeholder="Image URL" className="p-2 border rounded" value={image} onChange={(event) => setImage(event.target.value)} required />
               <input placeholder="Category" className="p-2 border rounded" value={category} onChange={(event) => setCategory(event.target.value)} required />
               <input placeholder="Brand (optional)" className="p-2 border rounded" value={brand} onChange={(event) => setBrand(event.target.value)} />
@@ -279,6 +306,7 @@ function AdminPanel() {
                   {product.oldPrice > product.price && (
                     <p className="text-sm font-medium text-emerald-700">
                       Sale: {Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)}% off
+                      {product.saleEndsAt && ` · ends ${new Date(product.saleEndsAt).toLocaleString()}`}
                     </p>
                   )}
                   <p className="mt-1 text-sm text-gray-600">Inventory: {product.stock} in stock</p>
@@ -292,6 +320,11 @@ function AdminPanel() {
                         setName(product.name);
                         setPrice(product.oldPrice > product.price ? product.oldPrice : product.price);
                         setSalePrice(product.oldPrice > product.price ? product.price : '');
+                        setSaleDurationHours(
+                          product.saleActive && product.saleEndsAt
+                            ? String(Math.max(1, Math.ceil((new Date(product.saleEndsAt).getTime() - Date.now()) / 3600000)))
+                            : '48'
+                        );
                         setImage(product.image);
                         setDescription(product.description);
                         setCategory(product.category);

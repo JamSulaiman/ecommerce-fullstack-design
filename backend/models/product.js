@@ -22,6 +22,8 @@ const productSchema = new mongoose.Schema({
       message: 'Regular price must be higher than the sale price.',
     },
   },
+  saleStartsAt: { type: Date, default: null },
+  saleEndsAt: { type: Date, default: null },
   image: { type: String, required: true },
   description: { type: String, required: true },
   category: { type: String, required: true },
