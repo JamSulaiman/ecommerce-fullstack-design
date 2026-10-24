@@ -30,7 +30,6 @@ export const AuthProvider = ({ children }) => {
       return {
         success: false,
         error: error.response?.data?.message || 'Login failed',
-        emailVerificationRequired: error.response?.data?.emailVerificationRequired || false,
       };
     }
   };

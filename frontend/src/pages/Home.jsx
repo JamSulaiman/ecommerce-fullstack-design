@@ -460,7 +460,7 @@ const Home = () => {
               An easy way to send<br />requests to all suppliers
             </h2>
             <p className="text-sm text-blue-100 max-w-sm leading-relaxed mb-5 lg:mb-0">
-              Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt.
+              Tell us what you need and our team will help you find the right products, compare options, and get a quote from trusted suppliers.
             </p>
             {/* Mobile-only simple trigger button */}
             {!user?.isAdmin && (
@@ -628,7 +628,7 @@ const Home = () => {
             <div className="w-full md:w-[190px] flex-shrink-0">
               <p className="text-lg font-bold text-blue-600 mb-3">📦 Brand</p>
               <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                Best information about the company goes here but now lorem ipsum is
+                Discover quality products, compare your options, and shop with confidence. We make finding the right products simple.
               </p>
               <div className="flex gap-2">
                 {['f', '🐦', 'in', '📷', '▶'].map((icon, i) => (

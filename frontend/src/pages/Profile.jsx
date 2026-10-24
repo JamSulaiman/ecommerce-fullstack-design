@@ -166,13 +166,13 @@ const Profile = () => {
   }
 
   return (
-    <div className="bg-gray-100 min-h-screen py-8">
+    <div className="bg-gray-100 min-h-screen py-4 sm:py-8">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex flex-col lg:flex-row gap-6">
-          <section className="flex-1 bg-white rounded-3xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
+          <section className="min-w-0 flex-1 bg-white rounded-3xl p-4 sm:p-6 shadow-sm">
+            <div className="flex items-center justify-between gap-3 mb-6">
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900">My account</h1>
+                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">My account</h1>
                 <p className="text-sm text-gray-500 mt-1">Manage your profile, orders, and settings.</p>
               </div>
               <button
@@ -187,7 +187,7 @@ const Profile = () => {
             </div>
 
             <div className="space-y-3 mb-6">
-              <details className="rounded-3xl border border-gray-200 bg-gray-50 p-5">
+              <details className="rounded-3xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
                 <summary className="cursor-pointer text-sm font-semibold text-gray-800">My profile and personal details</summary>
                 <form onSubmit={saveProfile} className="pt-4 space-y-3">
                   {profileMessage && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">{profileMessage}</p>}
@@ -247,7 +247,7 @@ const Profile = () => {
                   </form>
                 )}
               </details>
-              <details className="rounded-3xl border border-gray-200 bg-gray-50 p-5">
+              <details className="rounded-3xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
                 <summary className="cursor-pointer text-sm font-semibold text-gray-800">Account links</summary>
                 <div className="pt-4">
                   {!user.isAdmin && <Link to="/cart" className="block text-sm text-blue-600 hover:underline mb-3">View cart</Link>}
@@ -259,8 +259,8 @@ const Profile = () => {
               </details>
             </div>
 
-            {!user.isAdmin && <details id="orders" open={location.hash === '#orders'} className="rounded-3xl bg-white border border-gray-200 p-6">
-              <summary className="cursor-pointer text-lg font-semibold text-gray-900">
+            {!user.isAdmin && <details id="orders" open={location.hash === '#orders'} className="rounded-3xl bg-white border border-gray-200 p-4 sm:p-6">
+              <summary className="cursor-pointer text-base sm:text-lg font-semibold text-gray-900">
                 My order details ({orders.length})
               </summary>
               <p className="text-sm text-gray-500 mt-3 mb-5">Orders stay visible until 24 hours after delivery or cancellation. Older orders are removed automatically.</p>
@@ -276,11 +276,11 @@ const Profile = () => {
               {!loading && !error && orders.length > 0 && (
                 <div className="space-y-4">
                   {orders.map((order) => (
-                    <div key={order._id} className="rounded-3xl border border-gray-200 p-5 hover:shadow-sm transition">
+                    <div key={order._id} className="min-w-0 rounded-3xl border border-gray-200 p-4 sm:p-5 hover:shadow-sm transition">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                         <div>
                           <p className="text-sm text-gray-500">Order ID</p>
-                          <p className="text-sm font-semibold text-gray-900">{order._id}</p>
+                          <p className="break-all text-sm font-semibold text-gray-900">{order._id}</p>
                         </div>
                         <div>
                           <p className="text-sm text-gray-500">Placed</p>

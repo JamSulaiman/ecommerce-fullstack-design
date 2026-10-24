@@ -67,6 +67,23 @@ const MobileSidebar = ({ isOpen, onClose }) => {
               <span>🧡</span> Profile
             </Link>
           </div>
+          {user?.isAdmin && (
+            <div className="flex flex-col gap-4 border-b pb-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Admin tools</p>
+              <Link to="/admin?tab=products" onClick={onClose} className="flex items-center gap-3">
+                <span>📦</span> Manage products
+              </Link>
+              <Link to="/admin?tab=customers" onClick={onClose} className="flex items-center gap-3">
+                <span>👥</span> Customer dashboard
+              </Link>
+              <Link to="/admin?tab=projects" onClick={onClose} className="flex items-center gap-3">
+                <span>🧾</span> Project requests
+              </Link>
+              <Link to="/admin?tab=messages" onClick={onClose} className="flex items-center gap-3">
+                <span>💬</span> Customer messages
+              </Link>
+            </div>
+          )}
           <div className="flex flex-col gap-4 border-b pb-4 text-gray-600">
             {!user?.isAdmin && (
               <Link to="/contact" onClick={onClose} className="flex items-center gap-3 hover:text-blue-600">

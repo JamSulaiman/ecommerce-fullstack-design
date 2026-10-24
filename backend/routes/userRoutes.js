@@ -278,14 +278,22 @@ router.post('/register', async (req, res) => {
     if (typeof password !== 'string' || password.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
     }
-    const userExists = await findUserByEmailInsensitive(normalizedEmail);
-    if (userExists) return res.status(400).json({ message: 'User already exists' });
-    const user = await User.create({ name: normalizedName, email: normalizedEmail, password, emailVerified: false });
+    let user = await findUserByEmailInsensitive(normalizedEmail);
+    if (user?.emailVerified) return res.status(400).json({ message: 'User already exists' });
+    const isResendingVerification = Boolean(user);
+    if (user && !(await user.matchPassword(password))) {
+      return res.status(409).json({ message: 'Registration is already in progress for this email. Use the password you chose when you registered.' });
+    }
+    if (!user) {
+      user = await User.create({ name: normalizedName, email: normalizedEmail, password, emailVerified: false });
+    }
     const result = await issueVerificationCode(user, normalizedEmail);
     res.status(201).json({
       message: result.sent
         ? 'Verification code sent. Check your email.'
-        : 'Your account was created, but the verification email could not be sent. Use resend after the email service is configured.',
+        : result.message || (isResendingVerification
+          ? 'Could not resend the verification email. Please try again later.'
+          : 'Your account was created, but the verification email could not be sent. Use resend after the email service is configured.'),
       emailSent: result.sent,
       verificationRequired: true,
     });
@@ -585,8 +593,7 @@ router.post('/login', async (req, res) => {
     if (user && (await user.matchPassword(password))) {
       if (!user.emailVerified) {
         return res.status(403).json({
-          message: 'Verify your email before signing in.',
-          emailVerificationRequired: true,
+          message: 'Please complete email verification from the registration page before signing in.',
         });
       }
       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });

@@ -233,23 +233,24 @@ function AdminPanel() {
   ));
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-6xl mx-auto bg-white p-6 rounded-xl shadow-xl">
+    <div className="min-h-screen bg-gray-100 p-3 sm:p-6">
+      <div className="max-w-6xl mx-auto min-w-0 bg-white p-4 sm:p-6 rounded-xl shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <h2 className="text-3xl font-bold">🛠️ Admin Panel</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold">🛠️ Admin Panel</h2>
           <div className="flex flex-wrap gap-2">
             {[
-              ['products', 'Products'],
-              ['customers', 'Customers'],
-              ['projects', 'Project requests'],
-              ['messages', 'Customer messages'],
-            ].map(([tab, label]) => (
+              ['products', 'Products', 'Products'],
+              ['customers', 'Customers', 'Customers'],
+              ['projects', 'Project requests', 'Projects'],
+              ['messages', 'Customer messages', 'Messages'],
+            ].map(([tab, label, mobileLabel]) => (
               <button
                 key={tab}
                 onClick={() => selectTab(tab)}
-                className={`px-4 py-2 rounded-lg ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
               >
-                {label}
+                <span className="sm:hidden">{mobileLabel}</span>
+                <span className="hidden sm:inline">{label}</span>
               </button>
             ))}
           </div>
@@ -257,10 +258,10 @@ function AdminPanel() {
 
         {activeTab === 'products' ? (
           <>
-            <form onSubmit={submitHandler} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              <input placeholder="Name" className="p-2 border rounded" value={name} onChange={(event) => setName(event.target.value)} required />
-              <input placeholder="Regular price" type="number" min="0.01" step="0.01" className="p-2 border rounded" value={price} onChange={(event) => setPrice(event.target.value)} required />
-              <input placeholder="Sale price (optional)" type="number" min="0.01" step="0.01" className="p-2 border rounded" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} />
+            <form onSubmit={submitHandler} className="grid min-w-0 grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <input placeholder="Name" className="min-w-0 p-2 border rounded" value={name} onChange={(event) => setName(event.target.value)} required />
+              <input placeholder="Regular price" type="number" min="0.01" step="0.01" className="min-w-0 p-2 border rounded" value={price} onChange={(event) => setPrice(event.target.value)} required />
+              <input placeholder="Sale price (optional)" type="number" min="0.01" step="0.01" className="min-w-0 p-2 border rounded" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} />
               <label className="flex flex-col gap-1 text-sm text-gray-600">
                 Sale duration (hours)
                 <input
@@ -268,7 +269,7 @@ function AdminPanel() {
                   min="1"
                   max="720"
                   step="1"
-                  className="p-2 border rounded text-gray-900"
+                  className="min-w-0 p-2 border rounded text-gray-900"
                   value={saleDurationHours}
                   onChange={(event) => setSaleDurationHours(event.target.value)}
                   disabled={!salePrice}
@@ -278,12 +279,12 @@ function AdminPanel() {
               <p className="self-center text-xs text-gray-500">
                 Starts when you save. Default is 48 hours (2 days); maximum is 30 days.
               </p>
-              <input placeholder="Image URL" className="p-2 border rounded" value={image} onChange={(event) => setImage(event.target.value)} required />
-              <input placeholder="Category" className="p-2 border rounded" value={category} onChange={(event) => setCategory(event.target.value)} required />
-              <input placeholder="Brand (optional)" className="p-2 border rounded" value={brand} onChange={(event) => setBrand(event.target.value)} />
-              <input placeholder="Stock quantity" type="number" min="0" step="1" className="p-2 border rounded" value={stock} onChange={(event) => setStock(event.target.value)} required />
-              <textarea placeholder="Description" className="p-2 border rounded col-span-2" value={description} onChange={(event) => setDescription(event.target.value)} required />
-              <div className="col-span-2 flex gap-4">
+              <input placeholder="Image URL" className="min-w-0 p-2 border rounded" value={image} onChange={(event) => setImage(event.target.value)} required />
+              <input placeholder="Category" className="min-w-0 p-2 border rounded" value={category} onChange={(event) => setCategory(event.target.value)} required />
+              <input placeholder="Brand (optional)" className="min-w-0 p-2 border rounded" value={brand} onChange={(event) => setBrand(event.target.value)} />
+              <input placeholder="Stock quantity" type="number" min="0" step="1" className="min-w-0 p-2 border rounded" value={stock} onChange={(event) => setStock(event.target.value)} required />
+              <textarea placeholder="Description" className="min-w-0 p-2 border rounded md:col-span-2" value={description} onChange={(event) => setDescription(event.target.value)} required />
+              <div className="flex flex-wrap gap-3 md:col-span-2">
                 <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
                   {editingId ? 'Update Product' : 'Add Product'}
                 </button>
@@ -313,7 +314,7 @@ function AdminPanel() {
                   <p className="text-sm text-gray-600">
                     Customer rating: {product.ratingCount ? `${product.rating.toFixed(1)} / 5 (${product.ratingCount})` : 'No ratings yet'}
                   </p>
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex flex-wrap gap-2 mt-2">
                     <button
                       onClick={() => {
                         setEditingId(product._id);
@@ -344,7 +345,7 @@ function AdminPanel() {
             </div>
           </>
         ) : activeTab === 'customers' ? (
-          <section className="rounded-3xl border border-gray-200 bg-white p-6">
+          <section className="min-w-0 rounded-3xl border border-gray-200 bg-white p-4 sm:p-6">
             <h3 className="text-xl font-semibold">Registered customers ({customers.length})</h3>
             <p className="text-sm text-gray-500 mt-1 mb-5">Manage customer accounts and customer orders. Admin accounts and their orders are excluded.</p>
             {customerLoading && <p className="text-sm text-gray-500">Loading customers...</p>}
@@ -374,7 +375,7 @@ function AdminPanel() {
               </div>
             )}
             {!customerLoading && !customerError && (
-              <section className="mt-8 border-t border-gray-200 pt-6">
+              <section className="mt-8 min-w-0 border-t border-gray-200 pt-6">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div>
                     <h3 className="text-xl font-semibold text-gray-900">Customer orders ({customerOrders.length})</h3>
@@ -416,10 +417,10 @@ function AdminPanel() {
                           <div className="space-y-3">
                             {ordersForCustomer.map((order) => (
                         <article key={order._id} className="rounded-2xl border border-gray-200 p-4">
-                          <div className="flex flex-wrap justify-between gap-4">
+                          <div className="flex flex-wrap justify-between gap-3">
                             <div>
                               <p className="text-xs text-gray-500">Order ID</p>
-                              <p className="text-sm font-semibold text-gray-900 break-all">{order._id}</p>
+                              <p className="break-all text-sm font-semibold text-gray-900">{order._id}</p>
                             </div>
                             <div>
                               <p className="text-xs text-gray-500">Placed</p>
