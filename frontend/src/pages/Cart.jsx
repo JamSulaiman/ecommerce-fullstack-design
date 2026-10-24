@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
 import { SAVED_FOR_LATER } from '../data/products';
+import { getFooterLink } from '../utils/footerLinks';
 
 const Cart = () => {
   const { cart, addToCart, removeFromCart, setQuantity, clearCart, getTotalPrice } = useCart();
@@ -32,6 +33,17 @@ const Cart = () => {
   const [toast, setToast] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [showShipping, setShowShipping] = useState(false);
+  const [placing, setPlacing] = useState(false);
+  const checkoutKey = useRef(null);
+  const [shipping, setShipping] = useState({
+    fullName: user?.name || '',
+    phone: '',
+    address: '',
+    city: '',
+    postalCode: '',
+  });
+  const setShip = (k) => (e) => setShipping((p) => ({ ...p, [k]: e.target.value }));
 
   const showToast = (msg) => {
     setToast(msg);
@@ -71,11 +83,25 @@ const Cart = () => {
   };
 
   const checkoutHandler = async () => {
+    if (user?.isAdmin) {
+      showError('Admin accounts manage the store and cannot place customer orders.');
+      return;
+    }
     if (!user) {
-      navigate('/login');
+      navigate('/login', { state: { from: '/cart' } });
       return;
     }
     if (items.length === 0) return;
+    if (!showShipping) {
+      setShowShipping(true);
+      return;
+    }
+    if (!shipping.fullName.trim() || !shipping.phone.trim() || !shipping.address.trim() || !shipping.city.trim()) {
+      showError('Please fill name, phone, address and city');
+      return;
+    }
+    setPlacing(true);
+    const checkoutStorageKey = `checkout-key-${user._id || user.id}`;
     try {
       const orderItems = cart.map((item) => {
         const productId = item._id || item.id;
@@ -90,13 +116,35 @@ const Cart = () => {
           product: productId,
         };
       });
-      await API.post('/users/orders', { orderItems, totalPrice: getTotalPrice() });
+      if (!checkoutKey.current) checkoutKey.current = sessionStorage.getItem(checkoutStorageKey);
+      if (!checkoutKey.current) {
+        checkoutKey.current = globalThis.crypto.randomUUID();
+        sessionStorage.setItem(checkoutStorageKey, checkoutKey.current);
+      }
+      const { data: orderResult } = await API.post(
+        '/users/orders',
+        { orderItems, shippingAddress: shipping, paymentMethod: 'COD' },
+        { headers: { 'Idempotency-Key': checkoutKey.current } }
+      );
       clearCart();
-      showToast('Order placed successfully!');
-      navigate('/');
+      checkoutKey.current = null;
+      sessionStorage.removeItem(checkoutStorageKey);
+      const confirmation = orderResult.idempotentReplay
+        ? 'Order was already placed. Check My Orders for the latest status.'
+        : orderResult.emailSent
+          ? 'Order placed successfully! Confirmation email sent.'
+          : 'Order placed successfully, but confirmation email could not be sent. Check My Orders.';
+      showToast(confirmation);
+      navigate('/profile#orders');
     } catch (error) {
+      if (error.response?.status >= 400 && error.response.status < 500) {
+        checkoutKey.current = null;
+        sessionStorage.removeItem(checkoutStorageKey);
+      }
       const message = error.response?.data?.message || error.message || 'Checkout failed';
       showError(message);
+    } finally {
+      setPlacing(false);
     }
   };
 
@@ -109,6 +157,20 @@ const Cart = () => {
   const discount = 60.0;
   const tax = 14.0;
   const total = subtotal - discount + tax;
+
+  if (user?.isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
+        <div className="max-w-lg rounded-2xl bg-white p-8 text-center shadow-sm">
+          <h1 className="text-2xl font-bold text-gray-900">Store management account</h1>
+          <p className="mt-3 text-gray-600">Admin accounts can browse product listings and details, but cannot use the shopping cart or place orders.</p>
+          <Link to="/products" className="mt-6 inline-block rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">
+            Browse products
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-100 min-h-screen relative">
@@ -290,9 +352,35 @@ const Cart = () => {
                 <span className="text-sm font-semibold text-gray-700">Total:</span>
                 <span className="text-lg font-bold text-gray-900">${total.toFixed(2)}</span>
               </div>
-              <button onClick={checkoutHandler} className="w-full bg-emerald-500 hover:bg-emerald-600 transition text-white text-sm font-semibold py-3 rounded-md mb-3">
-                <span className="sm:hidden">Checkout ({items.length} items)</span>
-                <span className="hidden sm:inline">Checkout</span>
+              {showShipping && (
+                <div className="mb-4 space-y-2 border-t border-gray-100 pt-3">
+                  <p className="text-sm font-semibold text-gray-700">Shipping details</p>
+                  {[
+                    ['fullName', 'Full name *'],
+                    ['phone', 'Phone *'],
+                    ['address', 'Street address *'],
+                    ['city', 'City *'],
+                    ['postalCode', 'Postal code'],
+                  ].map(([k, label]) => (
+                    <input
+                      key={k}
+                      value={shipping[k]}
+                      onChange={setShip(k)}
+                      placeholder={label}
+                      className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-600"
+                    />
+                  ))}
+                  <p className="text-xs text-gray-500">Payment: Cash on Delivery</p>
+                </div>
+              )}
+              {user?.isAdmin && <p className="mb-3 text-sm text-gray-600">Admin accounts manage the store and cannot place customer orders.</p>}
+              <button onClick={checkoutHandler} disabled={placing || items.length === 0 || user?.isAdmin} className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 transition text-white text-sm font-semibold py-3 rounded-md mb-3">
+                {user?.isAdmin ? 'Admin account' : placing ? 'Placing order…' : items.length === 0 ? 'Add items to checkout' : !user ? 'Login to checkout' : showShipping ? 'Place order' : (
+                  <>
+                    <span className="sm:hidden">Checkout ({items.length} items)</span>
+                    <span className="hidden sm:inline">Checkout</span>
+                  </>
+                )}
               </button>
               <div className="hidden sm:flex items-center justify-center gap-2 text-xl opacity-70">
                 <span>💳</span><span>◐</span><span>P</span><span>VISA</span><span></span>
@@ -406,19 +494,19 @@ const Cart = () => {
               <div>
                 <h4 className="text-sm font-bold mb-3">About</h4>
                 {['About Us', 'Find store', 'Categories', 'Blogs'].map((l) => (
-                  <a key={l} href="#" className="block text-xs text-gray-500 hover:text-blue-600 mb-2">{l}</a>
+                  <Link key={l} to={getFooterLink(l)} className="block text-xs text-gray-500 hover:text-blue-600 mb-2">{l}</Link>
                 ))}
               </div>
               <div>
                 <h4 className="text-sm font-bold mb-3">Information</h4>
                 {['Help Center', 'Money Refund', 'Shipping', 'Contact us'].map((l) => (
-                  <a key={l} href="#" className="block text-xs text-gray-500 hover:text-blue-600 mb-2">{l}</a>
+                  <Link key={l} to={getFooterLink(l)} className="block text-xs text-gray-500 hover:text-blue-600 mb-2">{l}</Link>
                 ))}
               </div>
               <div>
                 <h4 className="text-sm font-bold mb-3">For users</h4>
                 {['Login', 'Register', 'Settings', 'My Orders'].map((l) => (
-                  <a key={l} href="#" className="block text-xs text-gray-500 hover:text-blue-600 mb-2">{l}</a>
+                  <Link key={l} to={getFooterLink(l)} className="block text-xs text-gray-500 hover:text-blue-600 mb-2">{l}</Link>
                 ))}
               </div>
               <div>

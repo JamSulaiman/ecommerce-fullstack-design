@@ -1,63 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import API from '../api';
+import { getFooterLink } from '../utils/footerLinks';
+import { getCategoryLabel } from '../utils/productCategories';
 import bannerImg from '../assets/banner.jpeg';
-
-const CATEGORIES = [
-  'Automobiles',
-  'Clothes and wear',
-  'Home interiors',
-  'Computer and tech',
-  'Tools, equipments',
-  'Sports and outdoor',
-  'Animal and pets',
-  'Machinery tools',
-  'More category',
-];
-
-const DEALS = [
-  { name: 'Smart watches', discount: '-25%', price: 'From USD 19', img: '/products/tech/8.jpg' },
-  { name: 'Laptops', discount: '-15%', price: 'From USD 340', img: '/products/tech/7.jpg' },
-  { name: 'GoPro cameras', discount: '-40%', price: 'From USD 89', img: '/products/tech/6.jpg' },
-  { name: 'Headphones', discount: '-25%', price: 'From USD 10', img: '/products/tech/9.jpg' },
-  { name: 'Canon cameras', discount: '-25%', price: 'From USD 99', img: '/products/tech/6.jpg' },
-];
-
-const HOME_OUTDOOR = [
-  { name: 'Soft chairs', price: 'From USD 19', img: '/products/interior/1.jpg' },
-  { name: 'Sofa & chair', price: 'From USD 19', img: '/products/interior/2.jpg' },
-  { name: 'Kitchen dishes', price: 'From USD 19', img: '/products/interior/7.jpg' },
-  { name: 'Decor pots', price: 'From USD 19', img: '/products/interior/3.jpg' },
-  { name: 'Plant pots', price: 'From USD 100', img: '/products/interior/4.jpg' },
-  { name: 'Mattress', price: 'From USD 39', img: '/products/interior/5.jpg' },
-  { name: 'Table lamp', price: 'From USD 19', img: '/products/interior/6.jpg' },
-  { name: 'Coffee maker', price: 'From USD 10', img: '/products/interior/8.jpg' },
-];
-
-const CONSUMER_ELECTRONICS = [
-  { name: 'Smart watches', price: 'From USD 19', img: '/products/tech/8.jpg' },
-  { name: 'Cameras', price: 'From USD 89', img: '/products/tech/6.jpg' },
-  { name: 'Headphones', price: 'From USD 10', img: '/products/tech/9.jpg' },
-  { name: 'Smartphones', price: 'From USD 90', img: '/products/tech/1.jpg' },
-  { name: 'Gaming set', price: 'From USD 35', img: '/products/tech/5.jpg' },
-  { name: 'Laptops & PC', price: 'From USD 340', img: '/products/tech/7.jpg' },
-  { name: 'Smartphones', price: 'From USD 19', img: '/products/tech/4.jpg' },
-  { name: 'Electric kettle', price: 'From USD 240', img: '/products/tech/10.jpg' },
-];
-
-const RECOMMENDED_FALLBACK = [
-  { _id: 'r1', name: 'T-shirts with multiple colors, for men', price: 10.30, image: '/products/cloth/1.jpg' },
-  { _id: 'r2', name: 'Jeans shorts for men blue color', price: 10.30, image: '/products/cloth/4.jpg' },
-  { _id: 'r3', name: 'Brown winter coat medium size', price: 12.50, image: '/products/cloth/3.jpg' },
-  { _id: 'r4', name: 'Jeans bag for travel for men', price: 34.00, image: '/products/cloth/5.jpg' },
-  { _id: 'r5', name: 'Leather wallet', price: 99.00, image: '/products/cloth/6.jpg' },
-  { _id: 'r6', name: 'Canon camera black, 100x zoom', price: 9.99, image: '/products/tech/6.jpg' },
-  { _id: 'r7', name: 'Headset for gaming with mic', price: 8.99, image: '/products/tech/5.jpg' },
-  { _id: 'r8', name: 'Smartwatch silver color modern', price: 10.30, image: '/products/tech/8.jpg' },
-  { _id: 'r9', name: 'Blue suit for men formal wear', price: 10.30, image: '/products/cloth/7.jpg' },
-  { _id: 'r10', name: 'Electric kettle for travel', price: 80.95, image: '/products/tech/10.jpg' },
-];
 
 const SERVICES = [
   { title: 'Source from\nIndustry Hubs', icon: '🏭', color: 'from-amber-700 to-amber-900' },
@@ -109,12 +57,23 @@ function useCountdown(hours = 13, days = 4) {
 
 const Home = () => {
   const { addToCart } = useCart();
+  const { user } = useAuth();
   const timer = useCountdown();
-  const [activeCat, setActiveCat] = useState('Automobiles');
-  const [quoteForm, setQuoteForm] = useState({ item: '', details: '', qty: '' });
+  const [homeCategories, setHomeCategories] = useState([]);
+  const [quoteForm, setQuoteForm] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    item: '',
+    details: '',
+    qty: '',
+    unit: 'Pcs',
+  });
   const [showQuoteForm, setShowQuoteForm] = useState(false);
+  const [quoteSubmitting, setQuoteSubmitting] = useState(false);
   const [toast, setToast] = useState('');
   const [email, setEmail] = useState('');
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState('');
 
   const showToast = (msg) => {
     setToast(msg);
@@ -122,16 +81,13 @@ const Home = () => {
   };
 
   const handleAddToCart = (item) => {
+    if (user?.isAdmin) return;
     addToCart({ _id: item._id || item.name, name: item.name, price: item.price || 0, image: item.image || item.img }, 1);
     showToast(`${item.name} added to cart!`);
   };
 
-  // Featured products for the homepage, fetched live from the backend
-  // (MongoDB) on load. Falls back to the static set if the request hasn't
-  // resolved yet or the backend is unreachable, so the section never looks
-  // empty — the markup/layout below stays exactly the same either way.
-  const [recommended, setRecommended] = useState(RECOMMENDED_FALLBACK);
-  const [deals, setDeals] = useState(DEALS);
+  const [recommended, setRecommended] = useState([]);
+  const [deals, setDeals] = useState([]);
   const [homeOutdoorProducts, setHomeOutdoorProducts] = useState([]);
   const [consumerProducts, setConsumerProducts] = useState([]);
   const navigate = useNavigate();
@@ -143,6 +99,7 @@ const Home = () => {
     price: product.price,
     oldPrice: product.oldPrice || null,
     category: product.category,
+    stock: product.stock || 0,
   });
 
   const goToProductDetail = async (searchTerm) => {
@@ -163,8 +120,25 @@ const Home = () => {
     let isMounted = true;
     API.get('/products')
       .then(({ data }) => {
-        if (!isMounted || !data.length) return;
-        const mappedRecommended = data.slice(0, 10).map((p) => ({ _id: p._id, name: p.name, price: p.price, image: p.image }));
+        if (!isMounted) return;
+        const categoryMap = new Map();
+        data.forEach((product) => {
+          if (!product.category) return;
+          const label = getCategoryLabel(product.category);
+          if (!categoryMap.has(label)) categoryMap.set(label, { label, query: product.category, count: 0 });
+          categoryMap.get(label).count += 1;
+        });
+        setHomeCategories([...categoryMap.values()].sort((first, second) => first.label.localeCompare(second.label)));
+        if (!data.length) return;
+        const mappedRecommended = data.slice(0, 10).map((p) => ({
+          _id: p._id,
+          name: p.name,
+          price: p.price,
+          image: p.image,
+          stock: p.stock || 0,
+          rating: p.ratingCount ? p.rating : 0,
+          ratingCount: p.ratingCount || 0,
+        }));
         setRecommended(mappedRecommended);
 
         const discounted = data
@@ -175,12 +149,16 @@ const Home = () => {
             name: p.name,
             img: p.image,
             price: p.price,
+            stock: p.stock || 0,
             discount: `-${Math.round(((p.oldPrice - p.price) / p.oldPrice) * 100)}%`,
           }));
         if (discounted.length) setDeals(discounted);
       })
-      .catch(() => {
-        // keep RECOMMENDED_FALLBACK if the backend isn't reachable
+      .catch((error) => {
+        if (isMounted) setCategoriesError(error.response?.data?.message || 'Could not load product categories.');
+      })
+      .finally(() => {
+        if (isMounted) setCategoriesLoading(false);
       });
     return () => { isMounted = false; };
   }, []);
@@ -215,10 +193,25 @@ const Home = () => {
     return () => { isMounted = false; };
   }, []);
 
-  const handleInquirySubmit = (e) => {
+  const handleInquirySubmit = async (e) => {
     e.preventDefault();
-    showToast('Inquiry sent to suppliers ✓');
-    setQuoteForm({ item: '', details: '', qty: '' });
+    setQuoteSubmitting(true);
+    try {
+      await API.post('/users/inquiries', {
+        name: quoteForm.name,
+        email: quoteForm.email,
+        item: quoteForm.item,
+        details: quoteForm.details,
+        quantity: Number(quoteForm.qty),
+        quantityUnit: quoteForm.unit,
+      });
+      showToast('Project request submitted ✓');
+      setQuoteForm((current) => ({ ...current, item: '', details: '', qty: '', unit: 'Pcs' }));
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Could not submit your request. Please try again.');
+    } finally {
+      setQuoteSubmitting(false);
+    }
   };
 
   const handleSubscribe = (e) => {
@@ -228,13 +221,8 @@ const Home = () => {
     setEmail('');
   };
 
-  const activeHomeOutdoor = homeOutdoorProducts.length
-    ? homeOutdoorProducts
-    : HOME_OUTDOOR.map((p) => ({ ...p, _id: null, img: p.img }));
-
-  const activeConsumerElectronics = consumerProducts.length
-    ? consumerProducts
-    : CONSUMER_ELECTRONICS.map((p) => ({ ...p, _id: null, img: p.img }));
+  const activeHomeOutdoor = homeOutdoorProducts;
+  const activeConsumerElectronics = consumerProducts;
 
   return (
     <div className="bg-gray-100 min-h-screen relative">
@@ -252,21 +240,22 @@ const Home = () => {
         <div className="flex flex-col lg:flex-row gap-3 mb-3">
 
           {/* Sidebar */}
-          <aside className="hidden lg:block w-[180px] flex-shrink-0">
-            <div className="bg-white rounded-lg py-2">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCat(cat)}
-                  className={`w-full text-left px-4 py-2.5 text-sm transition border-l-[3px] ${
-                    activeCat === cat
-                      ? 'bg-blue-50 text-blue-600 border-blue-600'
-                      : 'text-gray-700 border-transparent hover:bg-blue-50 hover:text-blue-600'
-                  }`}
+          <aside className="hidden lg:block w-[220px] flex-shrink-0">
+            <div className="bg-white rounded-lg py-2 max-h-[350px] overflow-y-auto">
+              {homeCategories.length > 0 ? homeCategories.map(({ label, query, count }) => (
+                <Link
+                  key={label}
+                  to={`/products?cat=${encodeURIComponent(query)}`}
+                  className="flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-gray-700 transition border-l-[3px] border-transparent hover:bg-blue-50 hover:text-blue-600"
                 >
-                  {cat}
-                </button>
-              ))}
+                  <span>{label}</span>
+                  <span className="text-xs text-gray-400">{count}</span>
+                </Link>
+              )) : (
+                <p className="px-4 py-3 text-sm text-gray-500">
+                  {categoriesLoading ? 'Loading categories…' : categoriesError || 'No product categories are available.'}
+                </p>
+              )}
             </div>
           </aside>
 
@@ -277,16 +266,16 @@ const Home = () => {
               Electronic<br />items
             </h1>
             <div className="relative z-10">
-              <button className="bg-white text-gray-800 border border-gray-300 px-5 py-2 rounded-md text-sm font-medium w-fit hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+              <Link to="/products?q=electronics" className="inline-flex bg-white text-gray-800 border border-gray-300 px-5 py-2 rounded-md text-sm font-medium w-fit hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
                 Learn more
-              </button>
+              </Link>
             </div>
             <img
               src={bannerImg}
               alt="Homepage hero banner"
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 z-0 w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-emerald-900/20" />
+            <div className="absolute inset-0 z-0 bg-emerald-900/20" />
           </div>
 
           {/* Right Panel */}
@@ -306,19 +295,19 @@ const Home = () => {
                 Log in
               </Link>
             </div>
-            <div className="bg-orange-500 text-white rounded-lg p-3.5 text-xs leading-relaxed cursor-pointer hover:bg-orange-600 transition">
-              <p className="font-bold text-sm mb-0.5">Get US $10 off</p>
-              with a new supplier
-            </div>
-            <div className="bg-blue-600 text-white rounded-lg p-3.5 text-xs leading-relaxed cursor-pointer hover:bg-blue-700 transition">
+            <Link to="/offers" className="bg-orange-500 text-white rounded-lg p-3.5 text-xs leading-relaxed hover:bg-orange-600 transition">
+              <p className="font-bold text-sm mb-0.5">Shop current deals</p>
+              View products with real sale prices
+            </Link>
+            <Link to="/projects" className="bg-blue-600 text-white rounded-lg p-3.5 text-xs leading-relaxed hover:bg-blue-700 transition">
               <p className="font-semibold text-sm mb-0.5">Send quotes with</p>
-              supplier preferences
-            </div>
+              your product and quantity details →
+            </Link>
           </div>
         </div>
 
         {/* ═══════════ DEALS AND OFFERS ═══════════ */}
-        <div className="bg-white rounded-lg flex flex-col md:flex-row overflow-hidden mb-3">
+        {deals.length > 0 && <div className="bg-white rounded-lg flex flex-col md:flex-row overflow-hidden mb-3">
           <div className="w-full md:w-[180px] flex-shrink-0 p-4 md:border-r border-b md:border-b-0 border-gray-100">
             <h3 className="text-base font-bold mb-0.5">Deals and offers</h3>
             <p className="text-xs text-gray-400 mb-3">Hygiene equipments</p>
@@ -355,14 +344,17 @@ const Home = () => {
                 {deal.price && (
                   <p className="text-[11px] text-gray-500 mb-1">{typeof deal.price === 'number' ? `$${deal.price.toFixed(2)}` : deal.price}</p>
                 )}
+                <p className={`text-[11px] ${deal.stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {deal.stock > 0 ? `${deal.stock} in stock` : 'Out of stock'}
+                </p>
                 <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded">{deal.discount}</span>
               </Link>
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* ═══════════ HOME AND OUTDOOR ═══════════ */}
-        <div className="bg-white rounded-lg overflow-hidden mb-3">
+        {activeHomeOutdoor.length > 0 && <div className="bg-white rounded-lg overflow-hidden mb-3">
           {/* Mobile heading */}
           <h3 className="md:hidden text-base font-bold text-gray-900 px-4 pt-4">Home and outdoor</h3>
 
@@ -391,6 +383,7 @@ const Home = () => {
                 </div>
                 <p className="text-xs font-medium text-gray-900 leading-snug group-hover:text-blue-600 transition">{p.name}</p>
                 <p className="text-[11px] text-gray-400">{typeof p.price === 'number' ? `$${p.price.toFixed(2)}` : p.price}</p>
+                <p className={`text-[11px] ${p.stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{p.stock > 0 ? `${p.stock} in stock` : 'Out of stock'}</p>
               </Link>
             ))}
             </div>
@@ -400,10 +393,10 @@ const Home = () => {
           <Link to="/products" className="md:hidden flex items-center gap-1.5 text-blue-600 text-sm font-medium px-4 py-3.5">
             Source now <span>→</span>
           </Link>
-        </div>
+        </div>}
 
         {/* ═══════════ CONSUMER ELECTRONICS ═══════════ */}
-        <div className="bg-white rounded-lg overflow-hidden mb-3">
+        {activeConsumerElectronics.length > 0 && <div className="bg-white rounded-lg overflow-hidden mb-3">
           {/* Mobile heading */}
           <h3 className="md:hidden text-base font-bold text-gray-900 px-4 pt-4">Consumer electronics</h3>
 
@@ -432,6 +425,7 @@ const Home = () => {
                 </div>
                 <p className="text-xs font-medium text-gray-900 leading-snug group-hover:text-blue-600 transition">{p.name}</p>
                 <p className="text-[11px] text-gray-400">{typeof p.price === 'number' ? `$${p.price.toFixed(2)}` : p.price}</p>
+                <p className={`text-[11px] ${p.stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{p.stock > 0 ? `${p.stock} in stock` : 'Out of stock'}</p>
               </Link>
             ))}
             </div>
@@ -441,7 +435,7 @@ const Home = () => {
           <Link to="/products" className="md:hidden flex items-center gap-1.5 text-blue-600 text-sm font-medium px-4 py-3.5">
             Source now <span>→</span>
           </Link>
-        </div>
+        </div>}
 
         {/* ═══════════ QUOTE BANNER ═══════════ */}
         <div className="bg-gradient-to-br from-blue-700 via-blue-600 to-sky-400 rounded-lg p-6 md:p-10 flex flex-col lg:flex-row items-center gap-6 lg:gap-10 mb-3 relative overflow-hidden">
@@ -454,48 +448,84 @@ const Home = () => {
               Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt.
             </p>
             {/* Mobile-only simple trigger button */}
-            <button
-              onClick={() => setShowQuoteForm(!showQuoteForm)}
-              className="lg:hidden bg-white text-blue-700 text-sm font-semibold px-6 py-2.5 rounded-md"
-            >
-              Send inquiry
-            </button>
+            {!user?.isAdmin && (
+              <button
+                onClick={() => setShowQuoteForm(!showQuoteForm)}
+                className="lg:hidden bg-white text-blue-700 text-sm font-semibold px-6 py-2.5 rounded-md"
+              >
+                Send inquiry
+              </button>
+            )}
           </div>
-          <form
+          {!user?.isAdmin && <form
             onSubmit={handleInquirySubmit}
             className={`${showQuoteForm ? 'flex' : 'hidden'} lg:flex bg-white rounded-lg p-5 w-full lg:w-[320px] flex-shrink-0 z-10 flex-col`}
           >
-            <h4 className="text-sm font-semibold mb-3">Send quote to suppliers</h4>
-            <label className="text-xs text-gray-500 block mb-1.5">What item you need?</label>
+            <h4 className="text-sm font-semibold mb-3">Send project request</h4>
+            <input
+              value={quoteForm.name}
+              onChange={(e) => setQuoteForm({ ...quoteForm, name: e.target.value })}
+              placeholder="Your name"
+              required
+              maxLength="100"
+              className="w-full border border-gray-200 rounded-md p-2.5 text-xs outline-none focus:border-blue-600 mb-2"
+            />
+            <input
+              type="email"
+              value={quoteForm.email}
+              onChange={(e) => setQuoteForm({ ...quoteForm, email: e.target.value })}
+              placeholder="Your email"
+              required
+              maxLength="254"
+              className="w-full border border-gray-200 rounded-md p-2.5 text-xs outline-none focus:border-blue-600 mb-2"
+            />
+            <input
+              value={quoteForm.item}
+              onChange={(e) => setQuoteForm({ ...quoteForm, item: e.target.value })}
+              placeholder="Product or item"
+              required
+              maxLength="150"
+              className="w-full border border-gray-200 rounded-md p-2.5 text-xs outline-none focus:border-blue-600 mb-2"
+            />
+            <label className="text-xs text-gray-500 block mb-1.5">Project details</label>
             <textarea
               value={quoteForm.details}
               onChange={(e) => setQuoteForm({ ...quoteForm, details: e.target.value })}
               placeholder="Type more details"
               rows="3"
+              required
+              maxLength="2000"
               className="w-full border border-gray-200 rounded-md p-2.5 text-xs outline-none focus:border-blue-600 mb-3 resize-none"
             ></textarea>
             <div className="flex gap-2 mb-3.5">
               <input
-                type="text"
+                type="number"
                 value={quoteForm.qty}
                 onChange={(e) => setQuoteForm({ ...quoteForm, qty: e.target.value })}
                 placeholder="Quantity"
+                required
+                min="1"
+                step="1"
                 className="flex-1 border border-gray-200 rounded-md px-2.5 py-2 text-xs outline-none focus:border-blue-600 min-w-0"
               />
-              <select className="border border-gray-200 rounded-md px-2.5 py-2 text-xs outline-none flex-shrink-0">
+              <select
+                value={quoteForm.unit}
+                onChange={(e) => setQuoteForm({ ...quoteForm, unit: e.target.value })}
+                className="border border-gray-200 rounded-md px-2.5 py-2 text-xs outline-none flex-shrink-0"
+              >
                 <option>Pcs</option>
                 <option>Kg</option>
                 <option>Box</option>
               </select>
             </div>
-            <button type="submit" className="bg-blue-600 text-white text-sm font-medium px-6 py-2.5 rounded-md hover:bg-blue-700 transition">
-              Send inquiry
+            <button type="submit" disabled={quoteSubmitting} className="bg-blue-600 text-white text-sm font-medium px-6 py-2.5 rounded-md hover:bg-blue-700 transition disabled:opacity-60">
+              {quoteSubmitting ? 'Submitting…' : 'Send inquiry'}
             </button>
-          </form>
+          </form>}
         </div>
 
         {/* ═══════════ RECOMMENDED ITEMS ═══════════ */}
-        <div className="mb-3">
+        {recommended.length > 0 && <div className="mb-3">
           <h2 className="text-base font-bold text-gray-900 mb-3.5">Recommended items</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {recommended.map((item) => (
@@ -509,13 +539,19 @@ const Home = () => {
                 </div>
                 <p className="text-sm font-semibold text-gray-900">${item.price.toFixed(2)}</p>
                 <p className="text-[11px] text-gray-400 leading-snug mt-0.5">{item.name}</p>
+                <p className={`text-[11px] mt-1 ${item.stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {item.stock > 0 ? `${item.stock} in stock` : 'Out of stock'}
+                </p>
+                <p className="text-[11px] text-amber-500">
+                  {item.ratingCount ? `${item.rating.toFixed(1)} / 5 (${item.ratingCount} reviews)` : 'No ratings yet'}
+                </p>
                 <button className="mt-2 w-full py-1.5 bg-blue-50 text-blue-600 text-xs font-medium rounded-md opacity-0 group-hover:opacity-100 transition">
                   View details
                 </button>
               </Link>
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* ═══════════ EXTRA SERVICES ═══════════ */}
         <div className="mb-3">
@@ -581,7 +617,7 @@ const Home = () => {
               </p>
               <div className="flex gap-2">
                 {['f', '🐦', 'in', '📷', '▶'].map((icon, i) => (
-                  <span key={i} className="w-7 h-7 bg-gray-100 hover:bg-blue-600 hover:text-white rounded-full flex items-center justify-center text-xs cursor-pointer transition">
+                  <span key={i} className="w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center text-xs">
                     {icon}
                   </span>
                 ))}
@@ -591,26 +627,26 @@ const Home = () => {
               <div>
                 <h4 className="text-sm font-bold mb-3">About</h4>
                 {['About Us', 'Find store', 'Categories', 'Blogs'].map((l) => (
-                  <a key={l} href="#" className="block text-xs text-gray-500 hover:text-blue-600 mb-2">{l}</a>
+                  <Link key={l} to={getFooterLink(l)} className="block text-xs text-gray-500 hover:text-blue-600 mb-2">{l}</Link>
                 ))}
               </div>
               <div>
                 <h4 className="text-sm font-bold mb-3">Information</h4>
                 {['Help Center', 'Money Refund', 'Shipping', 'Contact us'].map((l) => (
-                  <a key={l} href="#" className="block text-xs text-gray-500 hover:text-blue-600 mb-2">{l}</a>
+                  <Link key={l} to={getFooterLink(l)} className="block text-xs text-gray-500 hover:text-blue-600 mb-2">{l}</Link>
                 ))}
               </div>
               <div>
                 <h4 className="text-sm font-bold mb-3">For users</h4>
                 {['Login', 'Register', 'Settings', 'My Orders'].map((l) => (
-                  <a key={l} href="#" className="block text-xs text-gray-500 hover:text-blue-600 mb-2">{l}</a>
+                  <Link key={l} to={getFooterLink(l)} className="block text-xs text-gray-500 hover:text-blue-600 mb-2">{l}</Link>
                 ))}
               </div>
               <div>
                 <h4 className="text-sm font-bold mb-3">Get app</h4>
                 <div className="flex flex-col gap-2">
-                  <button className="bg-gray-900 text-white text-[11px] rounded-md px-3 py-1.5 hover:bg-blue-600 transition">📱 App Store</button>
-                  <button className="bg-gray-900 text-white text-[11px] rounded-md px-3 py-1.5 hover:bg-blue-600 transition">▶ Google Play</button>
+                  <button disabled title="Mobile app is not available yet" className="bg-gray-900 text-white text-[11px] rounded-md px-3 py-1.5 opacity-60 cursor-not-allowed">📱 App Store · Coming soon</button>
+                  <button disabled title="Mobile app is not available yet" className="bg-gray-900 text-white text-[11px] rounded-md px-3 py-1.5 opacity-60 cursor-not-allowed">▶ Google Play · Coming soon</button>
                 </div>
               </div>
             </div>

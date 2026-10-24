@@ -27,19 +27,84 @@ export const AuthProvider = ({ children }) => {
       setAuthToken(data.token);
       return { success: true, user: data };
     } catch (error) {
-      return { success: false, error: error.response?.data?.message || 'Login failed' };
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Login failed',
+        emailVerificationRequired: error.response?.data?.emailVerificationRequired || false,
+      };
     }
   };
 
   const register = async (name, email, password) => {
     try {
       const { data } = await API.post('/users/register', { name, email, password });
+      if (data.verificationRequired) return { success: true, ...data };
       localStorage.setItem('userInfo', JSON.stringify(data));
       setUser(data);
       setAuthToken(data.token);
       return { success: true, user: data };
     } catch (error) {
       return { success: false, error: error.response?.data?.message || 'Registration failed' };
+    }
+  };
+
+  const verifyEmail = async (email, code) => {
+    try {
+      const { data } = await API.post('/users/verify-email', { email, code });
+      return { success: true, message: data.message };
+    } catch (error) {
+      return { success: false, error: error.response?.data?.message || 'Could not verify email' };
+    }
+  };
+
+  const resendVerification = async (email) => {
+    try {
+      const { data } = await API.post('/users/resend-verification', { email });
+      return { success: true, message: data.message };
+    } catch (error) {
+      return { success: false, error: error.response?.data?.message || 'Could not resend verification code' };
+    }
+  };
+
+  const updateProfile = async (profileData) => {
+    try {
+      const { data } = await API.put('/users/profile', profileData);
+      const updatedUser = { ...user, ...data };
+      localStorage.setItem('userInfo', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      return { success: true, user: updatedUser };
+    } catch (error) {
+      return { success: false, error: error.response?.data?.message || 'Could not update profile' };
+    }
+  };
+
+  const requestEmailChange = async (email, currentPassword) => {
+    try {
+      const { data } = await API.put('/users/profile/email-verification', { email, currentPassword });
+      return { success: true, message: data.message };
+    } catch (error) {
+      return { success: false, error: error.response?.data?.message || 'Could not send email verification code' };
+    }
+  };
+
+  const verifyEmailChange = async (code) => {
+    try {
+      const { data } = await API.put('/users/profile/verify-email', { code });
+      const updatedUser = { ...user, ...data };
+      localStorage.setItem('userInfo', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      return { success: true, user: updatedUser };
+    } catch (error) {
+      return { success: false, error: error.response?.data?.message || 'Could not verify email change' };
+    }
+  };
+
+  const resendEmailChangeCode = async () => {
+    try {
+      const { data } = await API.post('/users/profile/resend-email-verification');
+      return { success: true, message: data.message };
+    } catch (error) {
+      return { success: false, error: error.response?.data?.message || 'Could not resend verification code' };
     }
   };
 
@@ -50,7 +115,19 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
+      register,
+      verifyEmail,
+      resendVerification,
+      updateProfile,
+      requestEmailChange,
+      verifyEmailChange,
+      resendEmailChangeCode,
+      logout,
+    }}>
       {children}
     </AuthContext.Provider>
   );

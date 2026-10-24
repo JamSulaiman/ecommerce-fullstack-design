@@ -44,20 +44,40 @@ const MobileSidebar = ({ isOpen, onClose }) => {
             <Link to="/products" onClick={onClose} className="flex items-center gap-3">
               <span>📋</span> Categories
             </Link>
-            <Link to="/profile#orders" onClick={onClose} className="flex items-center gap-3">
-              <span>📦</span> My orders
+            <Link to="/offers" onClick={onClose} className="flex items-center gap-3">
+              <span>🏷️</span> Hot offers
             </Link>
+            <Link to="/gift-boxes" onClick={onClose} className="flex items-center gap-3">
+              <span>🎁</span> Gift boxes
+            </Link>
+            {!user?.isAdmin && (
+              <Link to="/projects" onClick={onClose} className="flex items-center gap-3">
+                <span>🧾</span> Projects
+              </Link>
+            )}
+            <Link to="/help" onClick={onClose} className="flex items-center gap-3">
+              <span>❔</span> Help center
+            </Link>
+            {!user?.isAdmin && (
+              <Link to="/profile#orders" onClick={onClose} className="flex items-center gap-3">
+                <span>📦</span> My orders
+              </Link>
+            )}
             <Link to="/profile" onClick={onClose} className="flex items-center gap-3">
               <span>🧡</span> Profile
             </Link>
           </div>
           <div className="flex flex-col gap-4 border-b pb-4 text-gray-600">
-            <Link to="/contact" onClick={onClose} className="flex items-center gap-3 hover:text-blue-600">
-              <span>💬</span> Message
-            </Link>
-            <Link to="/contact" onClick={onClose} className="flex items-center gap-3 hover:text-blue-600">
-              <span>🎧</span> Contact us
-            </Link>
+            {!user?.isAdmin && (
+              <Link to="/contact" onClick={onClose} className="flex items-center gap-3 hover:text-blue-600">
+                <span>💬</span> Message
+              </Link>
+            )}
+            {!user?.isAdmin && (
+              <Link to="/contact" onClick={onClose} className="flex items-center gap-3 hover:text-blue-600">
+                <span>🎧</span> Contact us
+              </Link>
+            )}
             <Link to="/contact" onClick={onClose} className="flex items-center gap-3 hover:text-blue-600">
               <span>🏢</span> About
             </Link>

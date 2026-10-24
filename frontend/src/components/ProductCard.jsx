@@ -1,6 +1,10 @@
 import React from 'react';
 
 const ProductCard = ({ product, viewType = 'grid' }) => {
+  const rating = product.ratingCount ? product.rating : 0;
+  const ratingCount = product.ratingCount || 0;
+  const stock = product.stock || 0;
+
   if (viewType === 'list') {
     return (
       <div className="bg-white border rounded-lg p-4 flex gap-4 hover:shadow-sm transition-shadow">
@@ -10,8 +14,10 @@ const ProductCard = ({ product, viewType = 'grid' }) => {
             <h4 className="font-semibold text-gray-800 text-base">{product.name}</h4>
             <p className="text-xl font-bold text-gray-900 mt-1">${product.price}</p>
             <div className="flex items-center gap-2 mt-1 text-sm text-amber-500">
-              <span>⭐⭐⭐⭐★</span> <span className="text-gray-400 text-xs">7.5 • 154 orders</span>
+              <span>{'★'.repeat(Math.round(rating))}{'☆'.repeat(5 - Math.round(rating))}</span>
+              <span className="text-gray-400 text-xs">{ratingCount ? `${rating.toFixed(1)} (${ratingCount} reviews)` : 'No ratings yet'}</span>
             </div>
+            <p className={`mt-1 text-xs ${stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{stock > 0 ? `${stock} in stock` : 'Out of stock'}</p>
             <p className="text-gray-500 text-xs mt-2 hidden md:block line-clamp-2">{product.description}</p>
           </div>
           <button className="text-blue-600 font-medium text-xs self-start mt-2">View details</button>
@@ -28,7 +34,11 @@ const ProductCard = ({ product, viewType = 'grid' }) => {
       </div>
       <div className="mt-2 border-t pt-2">
         <p className="text-base font-bold text-gray-900">${product.price}</p>
-        <div className="text-xs text-amber-500 my-1">⭐⭐⭐⭐★ <span className="text-gray-400 ml-1">7.5</span></div>
+        <div className="text-xs text-amber-500 my-1">
+          {'★'.repeat(Math.round(rating))}{'☆'.repeat(5 - Math.round(rating))}
+          <span className="text-gray-400 ml-1">{ratingCount ? `${rating.toFixed(1)} (${ratingCount})` : 'No ratings yet'}</span>
+        </div>
+        <p className={`mb-1 text-xs ${stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{stock > 0 ? `${stock} in stock` : 'Out of stock'}</p>
         <h4 className="text-xs text-gray-600 line-clamp-2 min-h-[2rem]">{product.name}</h4>
       </div>
     </div>

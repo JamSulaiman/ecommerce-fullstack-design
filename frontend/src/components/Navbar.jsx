@@ -1,32 +1,47 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BrandLogo } from '../assets/icons';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import MobileSidebar from './MobileSidebar';
-
-const CATEGORIES = [
-  'Automobiles',
-  'Clothes and wear',
-  'Home interiors',
-  'Computer and tech',
-  'Tools, equipments',
-  'Sports and outdoor',
-  'Animal and pets',
-  'Machinery tools',
-];
+import API from '../api';
+import { getCategoryLabel } from '../utils/productCategories';
+import pakistanFlag from '../assets/pakistan.svg';
 
 function Navbar() {
   const { getTotalItems } = useCart();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [catOpen, setCatOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchVal, setSearchVal] = useState('');
   const [mobileSearchVal, setMobileSearchVal] = useState('');
   const [category, setCategory] = useState('All category');
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [categoryLoadError, setCategoryLoadError] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
   const totalItems = getTotalItems ? getTotalItems() : 0;
+
+  useEffect(() => {
+    let isMounted = true;
+    API.get('/products')
+      .then(({ data }) => {
+        if (!isMounted) return;
+        const categories = [...new Set(data.map((product) => getCategoryLabel(product.category)).filter(Boolean))].sort();
+        setAvailableCategories(categories);
+        setCategoryLoadError('');
+      })
+      .catch((error) => {
+        if (isMounted) setCategoryLoadError(error.response?.data?.message || 'Could not load product categories.');
+      });
+    return () => { isMounted = false; };
+  }, []);
+
+  useEffect(() => {
+    setCategory(searchParams.get('cat') || 'All category');
+  }, [searchParams]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -86,13 +101,15 @@ function Navbar() {
           <select
             value={category}
             onChange={handleCategoryChange}
+            title={categoryLoadError || 'Filter by product category'}
             className="hidden md:block bg-transparent border-l border-gray-200 px-3 text-sm text-gray-600 outline-none cursor-pointer h-full font-normal flex-shrink-0"
           >
             <option>All category</option>
-            {CATEGORIES.map((cat) => (
+            {availableCategories.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
+          {categoryLoadError && <span className="sr-only" role="status">{categoryLoadError}</span>}
           <button type="submit" className="bg-blue-600 hover:bg-blue-700 transition text-white text-sm font-medium px-6 flex-shrink-0">
             Search
           </button>
@@ -130,6 +147,13 @@ function Navbar() {
                         Customer dashboard
                       </Link>
                       <Link
+                        to="/admin?tab=projects"
+                        onClick={() => setProfileOpen(false)}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Project requests
+                      </Link>
+                      <Link
                         to="/admin?tab=products"
                         onClick={() => setProfileOpen(false)}
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -159,20 +183,24 @@ function Navbar() {
             </Link>
           )}
 
-          <Link to="/contact" className="hidden md:flex flex-col items-center text-gray-500 hover:text-blue-600 transition group">
-            <span className="text-lg mb-1 text-gray-400 group-hover:text-blue-600">💬</span>
-            <span className="text-xs font-normal">Message</span>
-          </Link>
+          {!user?.isAdmin && (
+            <Link to="/contact" className="hidden md:flex flex-col items-center text-gray-500 hover:text-blue-600 transition group">
+              <span className="text-lg mb-1 text-gray-400 group-hover:text-blue-600">💬</span>
+              <span className="text-xs font-normal">Message</span>
+            </Link>
+          )}
 
-          <Link to="/cart" className="flex flex-col items-center text-gray-500 hover:text-blue-600 transition group relative">
-            <span className="text-xl md:text-lg md:mb-1 text-gray-700 md:text-gray-400 group-hover:text-blue-600">🛒</span>
-            <span className="text-xs font-normal hidden md:inline">My cart</span>
-            {totalItems > 0 && (
-              <span className="absolute -top-1 -right-2 md:right-0 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                {totalItems}
-              </span>
-            )}
-          </Link>
+          {!user?.isAdmin && (
+            <Link to="/cart" className="flex flex-col items-center text-gray-500 hover:text-blue-600 transition group relative">
+              <span className="text-xl md:text-lg md:mb-1 text-gray-700 md:text-gray-400 group-hover:text-blue-600">🛒</span>
+              <span className="text-xs font-normal hidden md:inline">My cart</span>
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-2 md:right-0 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {totalItems}
+                </span>
+              )}
+            </Link>
+          )}
 
           <Link to={user ? '/profile' : '/login'} className="md:hidden text-xl text-gray-700">👤</Link>
         </div>
@@ -194,7 +222,7 @@ function Navbar() {
 
       {/* ── MOBILE CATEGORY PILLS ── */}
       <div className="md:hidden flex items-center gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
-        {['All category', ...CATEGORIES].map((c) => (
+        {['All category', ...availableCategories].map((c) => (
           <Link
             key={c}
             to={c === 'All category' ? '/products' : `/products?cat=${encodeURIComponent(c)}`}
@@ -216,16 +244,22 @@ function Navbar() {
             onMouseEnter={() => setCatOpen(true)}
             onMouseLeave={() => setCatOpen(false)}
           >
-            <button className="flex items-center gap-2 hover:text-blue-600 transition">
+            <button
+              type="button"
+              onClick={() => setCatOpen((open) => !open)}
+              aria-expanded={catOpen}
+              className="flex items-center gap-2 hover:text-blue-600 transition"
+            >
               <span className="text-lg">☰</span>
               <span>All category</span>
             </button>
             {catOpen && (
               <div className="absolute top-full left-0 bg-white border border-gray-200 rounded-md shadow-lg min-w-[200px] py-1.5 z-50">
-                {CATEGORIES.map((cat) => (
+                {availableCategories.map((cat) => (
                   <Link
                     key={cat}
                     to={`/products?cat=${encodeURIComponent(cat)}`}
+                    onClick={() => setCatOpen(false)}
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                   >
                     {cat}
@@ -234,35 +268,34 @@ function Navbar() {
               </div>
             )}
           </div>
-          <Link to="#" className="hover:text-blue-600 transition font-normal">Hot offers</Link>
-          <Link to="#" className="hover:text-blue-600 transition font-normal">Gift boxes</Link>
-          <Link to="#" className="hover:text-blue-600 transition font-normal">Projects</Link>
-          <Link to="#" className="hover:text-blue-600 transition font-normal">Menu item</Link>
-          <button className="flex items-center gap-1 hover:text-blue-600 transition font-normal">
-            <span>Help</span>
-            <span className="text-xs opacity-70">⌄</span>
-          </button>
+          <Link to="/offers" className="hover:text-blue-600 transition font-normal">Hot offers</Link>
+          <Link to="/gift-boxes" className="hover:text-blue-600 transition font-normal">Gift boxes</Link>
+          <Link to="/projects" className="hover:text-blue-600 transition font-normal">Projects</Link>
+          <Link to="/products" className="hover:text-blue-600 transition font-normal">Menu item</Link>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setHelpOpen((open) => !open)}
+              aria-expanded={helpOpen}
+              className="flex items-center gap-1 hover:text-blue-600 transition font-normal"
+            >
+              <span>Help</span>
+              <span className="text-xs opacity-70">⌄</span>
+            </button>
+            {helpOpen && (
+              <div className="absolute top-full right-0 mt-2 w-48 rounded-md border border-gray-200 bg-white py-1.5 shadow-lg z-50">
+                <Link to="/help" onClick={() => setHelpOpen(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600">Help center</Link>
+                {!user?.isAdmin && <Link to="/contact" onClick={() => setHelpOpen(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600">Contact support</Link>}
+                <Link to="/profile#orders" onClick={() => setHelpOpen(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600">Track an order</Link>
+              </div>
+            )}
+          </div>
         </nav>
 
-        <div className="flex items-center gap-6">
-          <button className="flex items-center gap-1 hover:text-blue-600 transition">
-            <span>English, USD</span>
-            <span className="text-xs opacity-70">⌄</span>
-          </button>
-
-          <button className="flex items-center gap-2 hover:text-blue-600 transition whitespace-nowrap">
-            <span>Ship to Germany</span>
-            <svg width="56" height="40" viewBox="0 0 56 40" fill="none" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" className="w-12 h-8 rounded-sm overflow-hidden">
-              <rect width="56" height="40" fill="url(#pattern0_1_4732)"/>
-              <defs>
-                <pattern id="pattern0_1_4732" patternContentUnits="objectBoundingBox" width="1" height="1">
-                  <use xlinkHref="#image0_1_4732" transform="scale(0.0178571 0.025)"/>
-                </pattern>
-                <image id="image0_1_4732" width="56" height="40" preserveAspectRatio="none" xlinkHref="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAoCAYAAAHcVwkTAAAABGdBTUEAALGPC/xhBQAAARtJREFUaAXtV8ENgzAQI1VWYIAKiXe7VzteR+ke5Y2AVu37HGGBRa7HE8u5s30hIfV9vzTGczLef1+nV9uazDwuJtak5Xk20VRVQ8igPE0Twk0MOmuyPgA0FhFh0IgI00JEuiJN1MfBt4p2D3JVPwC0RnpykH6E0Z2iRREmL0h/N5AKhMkVygvm8XZBDmyO0TuY7URuqbxgfGnY2TB58gz9F6SvJ2ZIBSBOi4JB6+E/mFL2ZrrezB8jN/cry6V4cQBTtiGS/20hVyi/06B898Dkju4hAq0ZApE7NWDuE8zzPNcQBN1jfnQdTa6BKL/jq01xvwdDoHqktq7nPsE8OD8m5L+EW49gaT33IxoCSyNwdDwSPHpCpf7cJ/gGcQZL7ByV1IgAAAAASUVORK5CYII="/>
-              </defs>
-            </svg>
-            <span className="text-xs opacity-70 leading-none">⌄</span>
-          </button>
+        <div className="flex items-center gap-3 whitespace-nowrap text-sm text-gray-600">
+          <span>English, USD</span>
+          <img src={pakistanFlag} alt="" className="h-5 w-7 rounded-sm object-cover" />
+          <span>Ships from Pakistan</span>
         </div>
       </div>
 

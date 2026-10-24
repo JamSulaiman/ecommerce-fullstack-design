@@ -1,7 +1,8 @@
 // backend/routes/productRoutes.js
 import express from 'express';
 import Product from '../models/product.js';
-import { protect, admin } from '../middleware/authMiddleware.js';
+import Order from '../models/Order.js';
+import { protect, optionalProtect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -34,7 +35,7 @@ router.get('/', async (req, res) => {
       filter.$and = clauses;
     }
 
-    const products = await Product.find(filter);
+    const products = await Product.find(filter).select('-reviews.user');
     res.status(200).json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -45,11 +46,77 @@ router.get('/', async (req, res) => {
 // @route   GET /api/products/:id
 router.get('/:id', async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params.id).select('-reviews.user');
     if (!product) return res.status(404).json({ message: 'Product not found' });
     res.status(200).json(product);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(error.name === 'CastError' ? 400 : 500).json({ message: error.message });
+  }
+});
+
+router.get('/:id/reviews', optionalProtect, async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id).select('reviews');
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+    const myReview = req.user
+      ? product.reviews.find((review) => review.user.equals(req.user._id))
+      : null;
+    const canReview = Boolean(req.user && !req.user.isAdmin && await Order.exists({
+      user: req.user._id,
+      status: 'delivered',
+      'orderItems.product': product._id,
+    }));
+    res.json({
+      reviews: product.reviews.map(({ name, rating, comment, createdAt }) => ({ name, rating, comment, createdAt })),
+      canReview,
+      myReview: myReview ? { rating: myReview.rating, comment: myReview.comment } : null,
+    });
+  } catch (error) {
+    res.status(error.name === 'CastError' ? 400 : 500).json({ message: error.message });
+  }
+});
+
+router.post('/:id/reviews', protect, async (req, res) => {
+  try {
+    if (req.user.isAdmin) {
+      return res.status(403).json({ message: 'Admin accounts cannot submit customer reviews.' });
+    }
+    const rating = Number(req.body.rating);
+    if (req.body.comment !== undefined && typeof req.body.comment !== 'string') {
+      return res.status(400).json({ message: 'Review comment must be text.' });
+    }
+    const comment = typeof req.body.comment === 'string' ? req.body.comment.trim() : '';
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Rating must be a whole number from 1 to 5.' });
+    }
+    if (comment.length > 1000) {
+      return res.status(400).json({ message: 'Review must be 1000 characters or fewer.' });
+    }
+
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+    const deliveredOrder = await Order.exists({
+      user: req.user._id,
+      status: 'delivered',
+      'orderItems.product': product._id,
+    });
+    if (!deliveredOrder) {
+      return res.status(403).json({ message: 'You can review a product after your order is delivered.' });
+    }
+
+    const existingReview = product.reviews.find((review) => review.user.equals(req.user._id));
+    if (existingReview) {
+      existingReview.rating = rating;
+      existingReview.comment = comment;
+    } else {
+      product.reviews.push({ user: req.user._id, name: req.user.name, rating, comment });
+    }
+    product.ratingCount = product.reviews.length;
+    product.rating = product.reviews.reduce((total, review) => total + review.rating, 0) / product.ratingCount;
+    await product.save();
+    res.status(200).json({ rating: product.rating, ratingCount: product.ratingCount });
+  } catch (error) {
+    res.status(error.name === 'CastError' ? 400 : 500).json({ message: error.message });
   }
 });
 
@@ -57,12 +124,27 @@ router.get('/:id', async (req, res) => {
 // @route   POST /api/products
 router.post('/', protect, admin, async (req, res) => {
   try {
-    const { name, price, image, description, category, stock } = req.body;
-    const product = new Product({ name, price, image, description, category, stock });
+    const { name, price, oldPrice = null, image, description, category, brand = '', stock } = req.body;
+    if (oldPrice !== null && (!Number.isFinite(Number(oldPrice)) || Number(oldPrice) <= Number(price))) {
+      return res.status(400).json({ message: 'Regular price must be higher than the sale price.' });
+    }
+    const product = new Product({
+      name,
+      price,
+      oldPrice,
+      image,
+      description,
+      category,
+      brand,
+      stock,
+      rating: 0,
+      ratingCount: 0,
+      orders: 0,
+    });
     const createdProduct = await product.save();
     res.status(201).json(createdProduct);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(error.name === 'CastError' || error.name === 'ValidationError' ? 400 : 500).json({ message: error.message });
   }
 });
 
@@ -73,17 +155,17 @@ router.put('/:id', protect, admin, async (req, res) => {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: 'Product not found' });
     
-    product.name = req.body.name || product.name;
-    product.price = req.body.price || product.price;
-    product.image = req.body.image || product.image;
-    product.description = req.body.description || product.description;
-    product.category = req.body.category || product.category;
-    product.stock = req.body.stock || product.stock;
+    for (const field of ['name', 'price', 'oldPrice', 'image', 'description', 'category', 'brand', 'stock']) {
+      if (req.body[field] !== undefined) product[field] = req.body[field];
+    }
+    if (product.oldPrice != null && product.oldPrice <= product.price) {
+      return res.status(400).json({ message: 'Regular price must be higher than the sale price.' });
+    }
 
     const updatedProduct = await product.save();
     res.status(200).json(updatedProduct);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(error.name === 'CastError' || error.name === 'ValidationError' ? 400 : 500).json({ message: error.message });
   }
 });
 

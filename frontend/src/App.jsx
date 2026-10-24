@@ -10,6 +10,10 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminPanel from './pages/AdminPanel';
 import Contact from './pages/Contact';
+import ShopCollection from './pages/ShopCollection';
+import Projects from './pages/Projects';
+import Help from './pages/Help';
+import About from './pages/About';
 
 function App() {
   return (
@@ -26,6 +30,11 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/offers" element={<ShopCollection type="offers" />} />
+          <Route path="/gift-boxes" element={<ShopCollection type="gifts" />} />
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/help" element={<Help />} />
+          <Route path="/about" element={<About />} />
         </Routes>
       </main>
     </div>
