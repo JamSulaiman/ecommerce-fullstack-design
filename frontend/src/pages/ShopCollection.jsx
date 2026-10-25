@@ -37,12 +37,13 @@ const ShopCollection = ({ type }) => {
 
   const addProduct = (product) => {
     if (user?.isAdmin) return;
-    addToCart({
+    const added = addToCart({
       _id: product._id,
       name: product.name,
       price: product.price,
       image: product.image,
     });
+    if (!added) return;
     setNotice(`${product.name} added to cart.`);
     window.setTimeout(() => setNotice(''), 2500);
   };
@@ -92,7 +93,7 @@ const ShopCollection = ({ type }) => {
                     ${Number(product.price).toFixed(2)}
                     {discounted && <span className="ml-2 text-sm font-normal text-gray-400 line-through">${Number(product.oldPrice).toFixed(2)}</span>}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">{product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}</p>
+                  <p className="text-xs text-gray-500 mt-1">{product.stock > 0 ? (user?.isAdmin ? `${product.stock} in stock` : 'In stock') : 'Out of stock'}</p>
                   {!user?.isAdmin && (
                     <button
                       type="button"

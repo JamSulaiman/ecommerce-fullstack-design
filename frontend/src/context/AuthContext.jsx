@@ -37,11 +37,11 @@ export const AuthProvider = ({ children }) => {
   const register = async (name, email, password) => {
     try {
       const { data } = await API.post('/users/register', { name, email, password });
-      if (data.verificationRequired) return { success: true, ...data };
-      localStorage.setItem('userInfo', JSON.stringify(data));
-      setUser(data);
-      setAuthToken(data.token);
-      return { success: true, user: data };
+      if (data.verificationRequired === true) return { success: true, ...data };
+      return {
+        success: false,
+        error: data.message || 'Email verification is required before you can sign in.',
+      };
     } catch (error) {
       return { success: false, error: error.response?.data?.message || 'Registration failed' };
     }

@@ -1,9 +1,12 @@
 import React from 'react';
+import { useAuth } from '../context/AuthContext';
 
 const ProductCard = ({ product, viewType = 'grid' }) => {
+  const { user } = useAuth();
   const rating = product.ratingCount ? product.rating : 0;
   const ratingCount = product.ratingCount || 0;
   const stock = product.stock || 0;
+  const stockLabel = stock > 0 ? (user?.isAdmin ? `${stock} in stock` : 'In stock') : 'Out of stock';
 
   if (viewType === 'list') {
     return (
@@ -17,7 +20,7 @@ const ProductCard = ({ product, viewType = 'grid' }) => {
               <span>{'★'.repeat(Math.round(rating))}{'☆'.repeat(5 - Math.round(rating))}</span>
               <span className="text-gray-400 text-xs">{ratingCount ? `${rating.toFixed(1)} (${ratingCount} reviews)` : 'No ratings yet'}</span>
             </div>
-            <p className={`mt-1 text-xs ${stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{stock > 0 ? `${stock} in stock` : 'Out of stock'}</p>
+            <p className={`mt-1 text-xs ${stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{stockLabel}</p>
             <p className="text-gray-500 text-xs mt-2 hidden md:block line-clamp-2">{product.description}</p>
           </div>
           <button className="text-blue-600 font-medium text-xs self-start mt-2">View details</button>
@@ -38,7 +41,7 @@ const ProductCard = ({ product, viewType = 'grid' }) => {
           {'★'.repeat(Math.round(rating))}{'☆'.repeat(5 - Math.round(rating))}
           <span className="text-gray-400 ml-1">{ratingCount ? `${rating.toFixed(1)} (${ratingCount})` : 'No ratings yet'}</span>
         </div>
-        <p className={`mb-1 text-xs ${stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{stock > 0 ? `${stock} in stock` : 'Out of stock'}</p>
+        <p className={`mb-1 text-xs ${stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{stockLabel}</p>
         <h4 className="text-xs text-gray-600 line-clamp-2 min-h-[2rem]">{product.name}</h4>
       </div>
     </div>

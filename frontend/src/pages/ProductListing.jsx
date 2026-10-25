@@ -5,14 +5,9 @@ import { useAuth } from '../context/AuthContext';
 import API from '../api';
 import { getFooterLink } from '../utils/footerLinks';
 import { getCategoryLabel } from '../utils/productCategories';
+import { getProductSearchScore, normalizeSearchText } from '../utils/productSearch';
 
 const Star = ({ filled }) => <span className={filled ? 'text-amber-400' : 'text-gray-300'}>★</span>;
-const normalizeSearchText = (value) => String(value || '')
-  .normalize('NFKD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .toLowerCase()
-  .replace(/[^a-z0-9]+/g, ' ')
-  .trim();
 
 const Rating = ({ rating, ratingCount }) => (
   <div className="flex items-center gap-1 text-xs">
@@ -166,14 +161,13 @@ const ProductListing = () => {
     setTimeout(() => setToast(''), 2000);
   };
 
-  const normalizedQuery = normalizeSearchText(searchKeyword);
-  const searchTerms = normalizedQuery.split(' ').filter(Boolean);
+  const searchScores = new Map(PRODUCTS.map((product) => [
+    product.id,
+    getProductSearchScore([product.name, product.desc, product.category, product.brand], searchKeyword),
+  ]));
   const filteredProducts = PRODUCTS.filter((product) => {
     if (searchCategory && normalizeSearchText(getCategoryLabel(product.category)) !== normalizeSearchText(getCategoryLabel(searchCategory))) return false;
-    const searchableFields = [product.name, product.desc, product.category, product.brand].map(normalizeSearchText);
-    if (normalizedQuery && !searchableFields.some((field) => (
-      field.includes(normalizedQuery) || searchTerms.some((term) => field.includes(term))
-    ))) return false;
+    if (searchScores.get(product.id) === null) return false;
     if (selectedBrands.length && !selectedBrands.some((brand) => normalizeSearchText(product.brand) === normalizeSearchText(brand))) return false;
     if (Number(minPrice) > 0 && product.price < Number(minPrice)) return false;
     if (maxPrice !== '' && product.price > Number(maxPrice)) return false;
@@ -183,6 +177,7 @@ const ProductListing = () => {
     return true;
   });
   const sortedProducts = [...filteredProducts].sort((first, second) => {
+    if (sort === 'Featured' && searchKeyword) return searchScores.get(first.id) - searchScores.get(second.id);
     if (sort === 'Price: low to high') return first.price - second.price;
     if (sort === 'Price: high to low') return second.price - first.price;
     if (sort === 'Newest') return new Date(second.createdAt || 0) - new Date(first.createdAt || 0);
@@ -191,8 +186,9 @@ const ProductListing = () => {
 
   const handleAdd = (p) => {
     if (user?.isAdmin || p.stock < 1) return;
-    addToCart({ _id: p.id, name: p.name, price: p.price, image: p.image }, 1);
-    showToast('Added to cart!');
+    if (addToCart({ _id: p.id, name: p.name, price: p.price, image: p.image }, 1)) {
+      showToast('Added to cart!');
+    }
   };
 
   const activeFilters = [
@@ -388,18 +384,21 @@ const ProductListing = () => {
               <div className="space-y-2">
                 {[4, 3, 2, 1].map((filled) => {
                   return (
-                    <button
-                      type="button"
+                    <label
                       key={filled}
-                      aria-pressed={ratingFilter === String(filled)}
-                      onClick={() => toggleRating(String(filled))}
-                      className={`flex w-full items-center gap-2.5 rounded px-1 py-0.5 text-sm ${ratingFilter === String(filled) ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                      className={`flex w-full cursor-pointer items-center gap-2.5 rounded px-1 py-0.5 ${ratingFilter === String(filled) ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
                     >
+                      <input
+                        type="checkbox"
+                        checked={ratingFilter === String(filled)}
+                        onChange={() => toggleRating(String(filled))}
+                        aria-label={`${filled} stars and up`}
+                        className="h-4 w-4 rounded border-gray-300 accent-blue-600"
+                      />
                       <span className="text-amber-400 text-sm">
                         {Array.from({ length: 5 }).map((_, i) => <Star key={i} filled={i < filled} />)}
                       </span>
-                      <span className="text-gray-600">{filled}.0 & up</span>
-                    </button>
+                    </label>
                   );
                 })}
               </div>
@@ -503,7 +502,7 @@ const ProductListing = () => {
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           <Rating rating={p.rating} ratingCount={p.ratingCount} />
                           <span>•</span>
-                          <span className={p.stock > 0 ? 'text-emerald-600' : 'text-red-600'}>{p.stock > 0 ? `${p.stock} in stock` : 'Out of stock'}</span>
+                          <span className={p.stock > 0 ? 'text-emerald-600' : 'text-red-600'}>{p.stock > 0 ? (user?.isAdmin ? `${p.stock} in stock` : 'In stock') : 'Out of stock'}</span>
                         </div>
                         {p.brand && <p className="mt-1 text-xs font-medium text-gray-500">{p.brand}</p>}
                         {p.oldPrice > p.price && (
@@ -543,7 +542,7 @@ const ProductListing = () => {
                           </p>
                         )}
                         <p className={`mt-1 text-xs ${p.stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                          {p.stock > 0 ? `${p.stock} in stock` : 'Out of stock'}
+                          {p.stock > 0 ? (user?.isAdmin ? `${p.stock} in stock` : 'In stock') : 'Out of stock'}
                         </p>
                         <p className="text-xs text-gray-600 mt-1.5 leading-snug line-clamp-2">{p.name}</p>
                         {!user?.isAdmin && (
@@ -586,7 +585,7 @@ const ProductListing = () => {
                       <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
                         <Rating rating={p.rating} ratingCount={p.ratingCount} />
                         <span>•</span>
-                        <span className={p.stock > 0 ? 'text-emerald-600' : 'text-red-600'}>{p.stock > 0 ? `${p.stock} in stock` : 'Out of stock'}</span>
+                        <span className={p.stock > 0 ? 'text-emerald-600' : 'text-red-600'}>{p.stock > 0 ? (user?.isAdmin ? `${p.stock} in stock` : 'In stock') : 'Out of stock'}</span>
                         <span>•</span>
                       </div>
                       {p.brand && <p className="mb-2 text-xs font-medium text-gray-500">{p.brand}</p>}

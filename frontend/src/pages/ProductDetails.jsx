@@ -86,7 +86,7 @@ const ProductDetails = () => {
         specs: [
           ...(liveProduct.brand ? [{ label: 'Brand', value: liveProduct.brand }] : []),
           { label: 'Category', value: liveProduct.category },
-          { label: 'Availability', value: liveProduct.stock > 0 ? `${liveProduct.stock} in stock` : 'Out of stock' },
+          { label: 'Availability', value: liveProduct.stock > 0 ? (user?.isAdmin ? `${liveProduct.stock} in stock` : 'In stock') : 'Out of stock' },
         ],
         tableSpecs: [{ label: 'Product ID', value: liveProduct._id }],
         features: [],
@@ -100,8 +100,9 @@ const ProductDetails = () => {
 
   const handleAddToCart = () => {
     if (user?.isAdmin || !liveProduct || liveProduct.stock < 1) return;
-    addToCart({ _id: p.id, name: p.name, price: liveProduct.price, image: p.images[0] }, 1);
-    showToast('Added to cart!');
+    if (addToCart({ _id: p.id, name: p.name, price: liveProduct.price, image: p.images[0] }, 1)) {
+      showToast('Added to cart!');
+    }
   };
 
   const submitReview = async (event) => {
@@ -349,7 +350,7 @@ const ProductDetails = () => {
           {/* Info */}
           <div>
             <p className={`text-xs font-medium flex items-center gap-1 mb-2 ${p.inStock ? 'text-emerald-600' : 'text-red-600'}`}>
-            {p.inStock ? `✓ ${liveProduct.stock} in stock` : 'Out of stock'}
+            {p.inStock ? `✓ ${user?.isAdmin ? `${liveProduct.stock} in stock` : 'In stock'}` : 'Out of stock'}
             </p>
             <h1 className="text-xl font-bold text-gray-900 mb-2 leading-snug">{p.name}</h1>
             <div className="flex items-center gap-2 text-xs text-gray-500 mb-4">

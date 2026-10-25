@@ -8,6 +8,12 @@ import { serializeProductPricing } from '../utils/productPricing.js';
 const router = express.Router();
 const MAX_SALE_DURATION_HOURS = 24 * 30;
 
+const serializeProductForViewer = (product, user, now) => {
+  const serialized = serializeProductPricing(product, now);
+  if (!user?.isAdmin) serialized.stock = serialized.stock > 0 ? 1 : 0;
+  return serialized;
+};
+
 const getSaleSchedule = (oldPrice, price, durationHours) => {
   if (oldPrice == null) return { saleStartsAt: null, saleEndsAt: null };
   const hours = Number(durationHours);
@@ -23,7 +29,7 @@ const getSaleSchedule = (oldPrice, price, durationHours) => {
 
 // @desc    Get all products (Search bhi isme kaam karega)
 // @route   GET /api/products?q=keyword&cat=category
-router.get('/', async (req, res) => {
+router.get('/', optionalProtect, async (req, res) => {
   try {
     const search = req.query.q || req.query.search || '';
     const category = req.query.cat || '';
@@ -53,7 +59,7 @@ router.get('/', async (req, res) => {
     const products = await Product.find(filter).select('-reviews.user');
     const now = new Date();
     res.set('X-Server-Time', String(now.getTime()));
-    res.status(200).json(products.map((product) => serializeProductPricing(product, now)));
+    res.status(200).json(products.map((product) => serializeProductForViewer(product, req.user, now)));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -61,11 +67,11 @@ router.get('/', async (req, res) => {
 
 // @desc    Get single product by ID
 // @route   GET /api/products/:id
-router.get('/:id', async (req, res) => {
+router.get('/:id', optionalProtect, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).select('-reviews.user');
     if (!product) return res.status(404).json({ message: 'Product not found' });
-    res.status(200).json(serializeProductPricing(product));
+    res.status(200).json(serializeProductForViewer(product, req.user, new Date()));
   } catch (error) {
     res.status(error.name === 'CastError' ? 400 : 500).json({ message: error.message });
   }

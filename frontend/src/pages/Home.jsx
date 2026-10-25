@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
@@ -90,8 +90,9 @@ const Home = () => {
 
   const handleAddToCart = (item) => {
     if (user?.isAdmin) return;
-    addToCart({ _id: item._id || item.name, name: item.name, price: item.price || 0, image: item.image || item.img }, 1);
-    showToast(`${item.name} added to cart!`);
+    if (addToCart({ _id: item._id || item.name, name: item.name, price: item.price || 0, image: item.image || item.img }, 1)) {
+      showToast(`${item.name} added to cart!`);
+    }
   };
 
   const [recommended, setRecommended] = useState([]);
@@ -101,8 +102,6 @@ const Home = () => {
   const activeDeals = deals.filter((deal) => new Date(deal.saleEndsAt).getTime() > timer.now);
   const [homeOutdoorProducts, setHomeOutdoorProducts] = useState([]);
   const [consumerProducts, setConsumerProducts] = useState([]);
-  const navigate = useNavigate();
-
   const mapProductGridItem = (product) => ({
     _id: product._id,
     name: product.name,
@@ -112,20 +111,6 @@ const Home = () => {
     category: product.category,
     stock: product.stock || 0,
   });
-
-  const goToProductDetail = async (searchTerm) => {
-    if (!searchTerm) return;
-    try {
-      const { data } = await API.get('/products', { params: { q: searchTerm } });
-      if (data && data.length > 0) {
-        navigate(`/product/${data[0]._id}`);
-        return;
-      }
-    } catch (error) {
-      // fallback to search listing if backend search fails
-    }
-    navigate(`/products?q=${encodeURIComponent(searchTerm)}`);
-  };
 
   useEffect(() => {
     let isMounted = true;
@@ -360,7 +345,7 @@ const Home = () => {
                   <p className="text-[11px] text-gray-500 mb-1">{typeof deal.price === 'number' ? `$${deal.price.toFixed(2)}` : deal.price}</p>
                 )}
                 <p className={`text-[11px] ${deal.stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {deal.stock > 0 ? `${deal.stock} in stock` : 'Out of stock'}
+                  {deal.stock > 0 ? (user?.isAdmin ? `${deal.stock} in stock` : 'In stock') : 'Out of stock'}
                 </p>
                 <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded">{deal.discount}</span>
               </Link>
@@ -398,7 +383,7 @@ const Home = () => {
                 </div>
                 <p className="text-xs font-medium text-gray-900 leading-snug group-hover:text-blue-600 transition">{p.name}</p>
                 <p className="text-[11px] text-gray-400">{typeof p.price === 'number' ? `$${p.price.toFixed(2)}` : p.price}</p>
-                <p className={`text-[11px] ${p.stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{p.stock > 0 ? `${p.stock} in stock` : 'Out of stock'}</p>
+                <p className={`text-[11px] ${p.stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{p.stock > 0 ? (user?.isAdmin ? `${p.stock} in stock` : 'In stock') : 'Out of stock'}</p>
               </Link>
             ))}
             </div>
@@ -440,7 +425,7 @@ const Home = () => {
                 </div>
                 <p className="text-xs font-medium text-gray-900 leading-snug group-hover:text-blue-600 transition">{p.name}</p>
                 <p className="text-[11px] text-gray-400">{typeof p.price === 'number' ? `$${p.price.toFixed(2)}` : p.price}</p>
-                <p className={`text-[11px] ${p.stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{p.stock > 0 ? `${p.stock} in stock` : 'Out of stock'}</p>
+                <p className={`text-[11px] ${p.stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{p.stock > 0 ? (user?.isAdmin ? `${p.stock} in stock` : 'In stock') : 'Out of stock'}</p>
               </Link>
             ))}
             </div>
@@ -555,7 +540,7 @@ const Home = () => {
                 <p className="text-sm font-semibold text-gray-900">${item.price.toFixed(2)}</p>
                 <p className="text-[11px] text-gray-400 leading-snug mt-0.5">{item.name}</p>
                 <p className={`text-[11px] mt-1 ${item.stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {item.stock > 0 ? `${item.stock} in stock` : 'Out of stock'}
+                  {item.stock > 0 ? (user?.isAdmin ? `${item.stock} in stock` : 'In stock') : 'Out of stock'}
                 </p>
                 <p className="text-[11px] text-amber-500">
                   {item.ratingCount ? `${item.rating.toFixed(1)} / 5 (${item.ratingCount} reviews)` : 'No ratings yet'}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 function Register() {
@@ -12,6 +12,7 @@ function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register, verifyEmail, resendVerification, login } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
 
   const submitHandler = async (e) => {
@@ -43,7 +44,7 @@ function Register() {
     const result = await verifyEmail(email, verificationCode);
     if (result.success) {
       const loginResult = await login(email, password);
-      if (loginResult.success) navigate('/');
+      if (loginResult.success) navigate(location.state?.redirectTo || location.state?.from || '/');
       else setError(loginResult.error || 'Email verified. Please sign in.');
     } else {
       setError(result.error);
@@ -122,7 +123,7 @@ function Register() {
           {loading ? 'Please wait…' : verificationRequired ? 'Verify email' : 'Register'}
         </button>
         {!verificationRequired && <p className="mt-4 text-center text-gray-600">
-          Already have an account? <Link to="/login" className="text-blue-500 hover:underline">Login</Link>
+          Already have an account? <Link to="/login" state={location.state} className="text-blue-500 hover:underline">Login</Link>
         </p>}
       </form>
     </div>

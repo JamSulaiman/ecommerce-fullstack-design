@@ -1,9 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 
 const CartContext = createContext();
 export const useCart = () => useContext(CartContext);
 
 export const CartProvider = ({ children }) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [cart, setCart] = useState([]);
 
   useEffect(() => {
@@ -15,12 +20,37 @@ export const CartProvider = ({ children }) => {
     localStorage.setItem('cart', JSON.stringify(cart));
   }, [cart]);
 
+  useEffect(() => {
+    if (!user || user.isAdmin) return;
+    const pendingCartItem = sessionStorage.getItem('pendingCartItem');
+    if (!pendingCartItem) return;
+    const { product, quantity } = JSON.parse(pendingCartItem);
+    setCart((previousCart) => {
+      const existingItem = previousCart.find((item) => item._id === product._id);
+      if (existingItem) {
+        return previousCart.map((item) => (
+          item._id === product._id ? { ...item, quantity: item.quantity + quantity } : item
+        ));
+      }
+      return [...previousCart, { ...product, quantity }];
+    });
+    sessionStorage.removeItem('pendingCartItem');
+    navigate('/cart', { replace: true });
+  }, [user, navigate]);
+
   const addToCart = (product, qty = 1) => {
+    if (!user) {
+      sessionStorage.setItem('pendingCartItem', JSON.stringify({ product, quantity: qty }));
+      navigate('/login', { state: { redirectTo: '/cart', from: location.pathname } });
+      return false;
+    }
+    if (user.isAdmin) return false;
     setCart(prev => {
       const exist = prev.find(i => i._id === product._id);
       if (exist) return prev.map(i => i._id === product._id ? { ...i, quantity: i.quantity + qty } : i);
       return [...prev, { ...product, quantity: qty }];
     });
+    return true;
   };
 
   const removeFromCart = (id) => setCart(prev => prev.filter(i => i._id !== id));

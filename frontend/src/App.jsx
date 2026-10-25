@@ -1,5 +1,5 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import ProductListing from './pages/ProductListing';
@@ -16,6 +16,12 @@ import Help from './pages/Help';
 import About from './pages/About';
 
 function App() {
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
       <Navbar />

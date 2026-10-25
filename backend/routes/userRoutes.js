@@ -36,6 +36,10 @@ const issueVerificationCode = async (user, recipient, pendingEmail = null) => {
   user.emailVerificationAttempts = 0;
   await user.save();
   const result = await sendEmailVerificationCode(recipient, code);
+  if (!result.sent) {
+    clearVerificationCode(user);
+    await user.save();
+  }
   return { ...result, rateLimited: false };
 };
 
@@ -280,7 +284,6 @@ router.post('/register', async (req, res) => {
     }
     let user = await findUserByEmailInsensitive(normalizedEmail);
     if (user?.emailVerified) return res.status(400).json({ message: 'User already exists' });
-    const isResendingVerification = Boolean(user);
     if (user && !(await user.matchPassword(password))) {
       return res.status(409).json({ message: 'Registration is already in progress for this email. Use the password you chose when you registered.' });
     }
@@ -291,9 +294,9 @@ router.post('/register', async (req, res) => {
     res.status(201).json({
       message: result.sent
         ? 'Verification code sent. Check your email.'
-        : result.message || (isResendingVerification
-          ? 'Could not resend the verification email. Please try again later.'
-          : 'Your account was created, but the verification email could not be sent. Use resend after the email service is configured.'),
+        : result.rateLimited
+          ? result.message
+          : 'Your account is pending email verification, but the code could not be sent. Please try again shortly.',
       emailSent: result.sent,
       verificationRequired: true,
     });
@@ -342,7 +345,10 @@ router.get('/admin/orders', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.get('/admin/customers', protect, admin, async (req, res) => {
   try {
-    const users = await User.find({ isAdmin: { $ne: true } }).select('-password').sort({ createdAt: -1 });
+    const users = await User.find({
+      isAdmin: { $ne: true },
+      emailVerified: true,
+    }).select('-password').sort({ createdAt: -1 });
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });

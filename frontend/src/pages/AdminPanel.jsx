@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import API from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -28,6 +28,7 @@ function AdminPanel() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const contentRef = useRef(null);
   const [activeTab, setActiveTab] = useState(() => {
     const requestedTab = searchParams.get('tab');
     return ['customers', 'projects', 'messages'].includes(requestedTab) ? requestedTab : 'products';
@@ -65,6 +66,15 @@ function AdminPanel() {
     if (activeTab === 'customers') fetchCustomers();
     if (activeTab === 'projects' || activeTab === 'messages') fetchInquiries(activeTab);
   }, [activeTab, user]);
+
+  useEffect(() => {
+    const requestedTab = searchParams.get('tab');
+    setActiveTab(['customers', 'projects', 'messages'].includes(requestedTab) ? requestedTab : 'products');
+  }, [searchParams]);
+
+  useEffect(() => {
+    contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [activeTab]);
 
   const fetchProducts = async () => {
     try {
@@ -256,6 +266,7 @@ function AdminPanel() {
           </div>
         </div>
 
+        <div ref={contentRef} className="scroll-mt-24">
         {activeTab === 'products' ? (
           <>
             <form onSubmit={submitHandler} className="grid min-w-0 grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -523,6 +534,7 @@ function AdminPanel() {
             )}
           </section>
         )}
+        </div>
       </div>
     </div>
   );
