@@ -31,6 +31,9 @@ function Register() {
       } else {
         navigate('/');
       }
+    } else if (result.code === 'REGISTRATION_PENDING') {
+      setVerificationRequired(true);
+      setNotice('A registration is already pending for this email. Use the password you originally chose. If the code did not arrive, resend it below.');
     } else {
       setError(result.error || 'Registration failed');
     }

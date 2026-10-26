@@ -43,7 +43,11 @@ export const AuthProvider = ({ children }) => {
         error: data.message || 'Email verification is required before you can sign in.',
       };
     } catch (error) {
-      return { success: false, error: error.response?.data?.message || 'Registration failed' };
+      return {
+        success: false,
+        code: error.response?.data?.code,
+        error: error.response?.data?.message || 'Registration failed',
+      };
     }
   };
 

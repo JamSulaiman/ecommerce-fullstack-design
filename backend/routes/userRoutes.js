@@ -285,7 +285,10 @@ router.post('/register', async (req, res) => {
     let user = await findUserByEmailInsensitive(normalizedEmail);
     if (user?.emailVerified) return res.status(400).json({ message: 'User already exists' });
     if (user && !(await user.matchPassword(password))) {
-      return res.status(409).json({ message: 'Registration is already in progress for this email. Use the password you chose when you registered.' });
+      return res.status(409).json({
+        code: 'REGISTRATION_PENDING',
+        message: 'Registration is already in progress for this email. Use the password you chose when you registered.',
+      });
     }
     if (!user) {
       user = await User.create({ name: normalizedName, email: normalizedEmail, password, emailVerified: false });
